@@ -35,8 +35,6 @@
         <div id="cps-line"><span id="cps-count">0</span> 粒/秒</div>
       </div>
     </div>
-    <!-- 施設（自動で増えていく。見えるように上部に表示） -->
-    <div id="facility-strip"></div>
     <div class="hud-stats">
       <div class="stat"><span class="stat-label">レベル</span><span id="level-count">1</span></div>
       <div class="stat"><span class="stat-label">1打鍵</span><span id="perchar-count">1</span></div>
@@ -49,10 +47,8 @@
   <main id="stage">
     <canvas id="fx-canvas"></canvas>
 
-    <!-- レベルアップ操作（中央と重ならないよう左上に固定） -->
-    <button id="levelup-btn" class="levelup-btn">
-      <kbd>2</kbd><span class="lu-name">レベルUP</span><span class="lu-cost" id="lu-cost"></span>
-    </button>
+    <!-- 施設（上部に大きめ表示。ここからポップコーンが落ちてくる） -->
+    <div id="facility-strip"></div>
 
     <!-- 目的：ポップコーンの容器を満タンにする（CSS/SVGで描画） -->
     <div id="container-wrap">
@@ -74,6 +70,13 @@
     <div id="typing-panel">
       <div id="word-display">レディ…？</div>
       <div id="romaji-guide"><span id="romaji-done"></span><span id="romaji-left"></span></div>
+    </div>
+
+    <!-- 入力画面の下：購入ボタン（手動） -->
+    <div id="key-hints">
+      <button class="key-hint" data-key="1"><kbd>1</kbd><span class="kh-name">レベルUP</span><span class="kh-cost" id="kh-level"></span></button>
+      <button class="key-hint" data-key="2"><kbd>2</kbd><span class="kh-name">施設購入</span><span class="kh-cost" id="kh-equip"></span></button>
+      <button class="key-hint" data-key="3"><kbd>3</kbd><span class="kh-name">品種研究</span><span class="kh-cost" id="kh-variety"></span></button>
     </div>
 
     <!-- ポップコーン生成ゲージ（今どれだけ作ってるか） -->

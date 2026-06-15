@@ -25,41 +25,52 @@ const UI = {
       containerName: $('container-name'), containerBox: $('container-box'),
       containerFill: $('container-fill'), containerAmount: $('container-amount'),
       containerBarFill: $('container-bar-fill'),
-      levelupBtn: $('levelup-btn'), luCost: $('lu-cost'),
+      khLevel: $('kh-level'), khEquip: $('kh-equip'), khVariety: $('kh-variety'),
       cheatModal: $('cheat-modal'),
       toastArea: $('toast-area'),
     };
   },
 
-  // 施設を「見える購入ボタン」として上部に並べる（自動で買われるが手動も可）
-  buildFacilities(game, handlers) {
+  // 施設を上部に大きめ表示（表示専用。購入は下のボタンで）
+  buildFacilities(game) {
     this.el.facilityStrip.innerHTML = '';
-    this.facElems = game.cfg.equipment.map((e, i) => {
-      const d = document.createElement('button');
-      d.className = 'fac';
+    this.facElems = game.cfg.equipment.map((e) => {
+      const d = document.createElement('div');
+      d.className = 'fac hidden';
       d.title = e.name;
-      d.innerHTML = `<img src="${ASSETS.imgUrl(e.img)}" alt="${e.name}"><span class="fac-n"></span><span class="fac-cost"></span>`;
-      d.addEventListener('click', () => handlers.buyEquip(i));
+      d.innerHTML = `<img src="${ASSETS.imgUrl(e.img)}" alt="${e.name}"><span class="fac-n"></span>`;
       this.el.facilityStrip.appendChild(d);
-      return { el: d, n: d.querySelector('.fac-n'), cost: d.querySelector('.fac-cost') };
+      return { el: d, n: d.querySelector('.fac-n') };
     });
     this.facCount = game.equip.slice();
   },
   updateFacilities(game) {
-    const F = FORMAT;
     for (let i = 0; i < this.facElems.length; i++) {
       const f = this.facElems[i], c = game.equip[i];
-      const cost = game.equipCost(i);
-      const can = game.popcorn >= cost;
-      f.n.textContent = c > 0 ? '×' + c : '';
-      f.cost.textContent = '🍿' + F.fmt(cost);
-      f.el.classList.toggle('owned', c > 0);
-      f.el.classList.toggle('affordable', can);
-      if (c > (this.facCount[i] || 0)) {   // 増えたらバウンド
-        f.el.classList.remove('bump'); void f.el.offsetWidth; f.el.classList.add('bump');
+      f.el.classList.toggle('hidden', c <= 0);
+      if (c > 0) {
+        f.n.textContent = '×' + c;
+        if (c > (this.facCount[i] || 0)) { f.el.classList.remove('bump'); void f.el.offsetWidth; f.el.classList.add('bump'); }
       }
       this.facCount[i] = c;
     }
+  },
+
+  // 入力下のボタン（コスト＋購入可否）
+  _kh(costEl, costText, affordable, maxed) {
+    costEl.textContent = maxed ? 'MAX' : '🍿' + costText;
+    const btn = costEl.closest('.key-hint');
+    if (btn) {
+      btn.classList.toggle('affordable', affordable && !maxed);
+      btn.classList.toggle('locked', !affordable && !maxed);
+    }
+  },
+  flashKeyHint(key, ok) {
+    const btn = document.querySelector('.key-hint[data-key="' + key + '"]');
+    if (!btn) return;
+    const cls = ok ? 'pressed' : 'press-fail';
+    btn.classList.remove(cls); void btn.offsetWidth; btn.classList.add(cls);
+    setTimeout(() => btn.classList.remove(cls), 420);
   },
 
   setCornSprite(imgKey) { this.el.hudCorn.src = ASSETS.imgUrl(imgKey); },
@@ -73,9 +84,14 @@ const UI = {
     this.el.level.textContent = game.level;
     this.el.cheatBadge.classList.toggle('hidden', !game.cheatActive);
 
-    // レベルUPボタン
-    this.el.luCost.textContent = '🍿' + F.fmt(game.levelCost);
-    this.el.levelupBtn.classList.toggle('affordable', game.canLevelUp);
+    // 入力下のボタン：1=レベル / 2=施設(高い順) / 3=品種
+    this._kh(this.el.khLevel, F.fmt(game.levelCost), game.canLevelUp, false);
+    let buyIdx = -1, cheapest = Infinity;
+    for (let i = game.cfg.equipment.length - 1; i >= 0; i--) { if (buyIdx < 0 && game.popcorn >= game.equipCost(i)) buyIdx = i; }
+    for (let i = 0; i < game.cfg.equipment.length; i++) cheapest = Math.min(cheapest, game.equipCost(i));
+    this._kh(this.el.khEquip, F.fmt(buyIdx >= 0 ? game.equipCost(buyIdx) : cheapest), buyIdx >= 0, false);
+    const nv = game.nextVariety;
+    this._kh(this.el.khVariety, nv ? F.fmt(nv.cost) : '', nv ? game.popcorn >= nv.cost : false, !nv);
 
     this.updateFacilities(game);
     this.updateContainer(game);
@@ -104,12 +120,6 @@ const UI = {
     this.el.genFill.style.height = pct.toFixed(0) + '%';
     this.el.genLabel.innerHTML = FORMAT.fmtRate(rate) + '<small>粒/秒</small>';
   },
-  flashLevelup() {
-    const b = this.el.levelupBtn;
-    b.classList.remove('pressed'); void b.offsetWidth; b.classList.add('pressed');
-    setTimeout(() => b.classList.remove('pressed'), 440);
-  },
-
   // ── コンボ ──────────────────────────────────────────
   showCombo(combo, mult) {
     const b = this.el.comboBadge;

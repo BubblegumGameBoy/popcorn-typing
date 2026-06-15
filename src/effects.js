@@ -86,6 +86,27 @@ class ParticleSystem {
     }
   }
 
+  /** 上からポップコーンが落ちてくる（施設からの生産演出。閃光なし）。 */
+  drop(x, y, count, imgKey) {
+    const img = this.images[imgKey] || null;
+    for (let i = 0; i < count; i++) {
+      const p = this._take();
+      p.on = true;
+      p.x = x + (Math.random() - 0.5) * 34;
+      p.y = y + (Math.random() - 0.5) * 10;
+      p.vx = (Math.random() - 0.5) * 70;
+      p.vy = 30 + Math.random() * 70;        // 下向き＝落ちる
+      p.rot = Math.random() * Math.PI * 2;
+      p.vrot = (Math.random() - 0.5) * 8;
+      p.scale = 0.16 + Math.random() * 0.12;
+      p.pop = 1;                              // すでに膨らんだ状態で落とす
+      p.alpha = 1;
+      p.maxLife = 1.3 + Math.random() * 0.9;
+      p.life = p.maxLife;
+      p.img = img;
+    }
+  }
+
   /** 浮かび上がる数字（「+N」など）。 */
   addText(x, y, text, color, size) {
     this.texts.push({ x, y, vy: -46, text, color: color || '#fff', size: size || 22, life: 0.9, maxLife: 0.9 });

@@ -55,16 +55,29 @@
     if (cm >= 2)  return { color: '#e88a36', size: 25 };
     return { color: '#d98326', size: 21 };
   }
-  function containerPos() {
+  // 所有している施設の画面位置（ここからポップコーンが落ちてくる）
+  function facilityPositions() {
     const cr = canvas.getBoundingClientRect();
-    const box = document.getElementById('container-box');
-    if (!box) return { x: cr.width / 2, y: cr.height * 0.3 };
-    const r = box.getBoundingClientRect();
-    return { x: r.left + r.width / 2 - cr.left, y: r.top + r.height * 0.4 - cr.top };
+    const list = [];
+    for (let i = 0; i < UI.facElems.length; i++) {
+      if (game.equip[i] <= 0) continue;
+      const r = UI.facElems[i].el.getBoundingClientRect();
+      if (r.width < 2) continue;
+      list.push({ x: r.left + r.width / 2 - cr.left, y: r.bottom - cr.top });
+    }
+    return list;
   }
   function emitAutoPuff() {
-    const p = containerPos();
-    particles.burst(p.x + (Math.random() - 0.5) * 50, p.y + (Math.random() - 0.5) * 40, 1, cornKey(), 0.5);
+    const ps = facilityPositions();
+    if (!ps.length) return;
+    const p = ps[Math.floor(Math.random() * ps.length)];
+    particles.drop(p.x, p.y, 1, cornKey());   // 施設から落下
+  }
+  function dropFromFacility(i, n) {
+    const f = UI.facElems[i]; if (!f) return;
+    const cr = canvas.getBoundingClientRect();
+    const r = f.el.getBoundingClientRect();
+    particles.drop(r.left + r.width / 2 - cr.left, r.bottom - cr.top, n, cornKey());
   }
 
   // ── フェーズ（背景＆BGM切替） ──────────────────────
@@ -121,26 +134,51 @@
   }
   function onBackspace() { if (current) { const r = current.backspace(); UI.setProgress(r.done, r.left); } }
   function onEnter() { audio.unlock(); if (current) nextWord(); }
-  function onDigit(d) { audio.unlock(); if (d === '2') doLevelUp(); }
-
-  // 施設は自動で買われるが、ボタンを押して手動購入も可
-  const facHandlers = {
-    buyEquip(i) {
-      if (game.buyEquip(i)) { audio.play('pop1', 0.85, 0.4); }
-      else { audio.play('pop1', 0.5, 0.25); }
-    },
-  };
+  // 入力下のボタン：1=レベルアップ / 2=施設購入(高い順) / 3=品種研究（すべて手動）
+  function onDigit(d) {
+    audio.unlock();
+    if (d === '1') doLevelUp();
+    else if (d === '2') doBuyFacility();
+    else if (d === '3') doBuyVariety();
+  }
 
   function doLevelUp() {
     if (game.levelUp()) {
       audio.play('result', 1.4, 0.65);
-      UI.flashLevelup();
+      UI.flashKeyHint('1', true);
       UI.bumpCorn();
       fireworksAcross(3, 6, cornKey(), 1.8);
       UI.toast(`⭐ レベル ${game.level}！ 粒が増えた`, { good: true });
     } else {
       audio.play('pop1', 0.5, 0.3);
+      UI.flashKeyHint('1', false);
       UI.toast(`レベルUPに ${FORMAT.fmt(game.levelCost)} 粒 必要`, {});
+    }
+  }
+  function doBuyFacility() {
+    const r = game.buyBestEquip();   // コスト高い順に1個だけ購入
+    if (r) {
+      audio.play('pop1', 0.85, 0.45);
+      UI.flashKeyHint('2', true);
+      UI.updateFacilities(game);
+      dropFromFacility(r.index, 10);   // その施設からポップコーンが落ちる
+      if (r.first) UI.toast(`⚙️ ${cfg.equipment[r.index].name} 設置！`, { good: true });
+    } else {
+      audio.play('pop1', 0.5, 0.25);
+      UI.flashKeyHint('2', false);
+      UI.toast('施設を買う粒が足りない…', {});
+    }
+  }
+  function doBuyVariety() {
+    if (game.nextVariety && game.buyVariety()) {
+      UI.setCornSprite(cornKey());
+      audio.play('result', 1.2, 0.6);
+      UI.flashKeyHint('3', true);
+      fireworksAcross(5, 7, cornKey(), 2.0);
+      UI.toast(`🌽 ${game.variety.name} を研究！`, { good: true, big: true });
+    } else {
+      audio.play('pop1', 0.5, 0.25);
+      UI.flashKeyHint('3', false);
     }
   }
 
@@ -195,7 +233,7 @@
     particles.resize();
 
     UI.setCornSprite(cornKey());
-    UI.buildFacilities(game, facHandlers);
+    UI.buildFacilities(game);
     applyPhase(true);
     UI.refresh(game);
     lastTotal = game.totalRun;
@@ -209,7 +247,10 @@
 
     attachKeyInput({ onChar, onBackspace, onEnter, onDigit, isActive: () => true });
 
-    document.getElementById('levelup-btn').addEventListener('click', () => { audio.unlock(); doLevelUp(); });
+    // 入力下のボタン（クリックでも数字キーと同じ）
+    document.querySelectorAll('.key-hint').forEach((b) => {
+      b.addEventListener('click', () => { audio.unlock(); onDigit(b.dataset.key); });
+    });
     document.getElementById('mute-btn').addEventListener('click', (e) => {
       const muted = audio.toggleMute();
       e.target.textContent = muted ? '🔇' : '🔊';
@@ -218,7 +259,7 @@
     document.getElementById('cheat-yes').addEventListener('click', () => {
       game.startCheatRun();
       UI.hideCheatModal();
-      UI.buildFacilities(game, facHandlers);
+      UI.buildFacilities(game);
       applyPhase(true);
       UI.setCornSprite(cornKey());
       UI.refresh(game);
@@ -227,12 +268,6 @@
       audio.play('result', 1.1, 0.9);
     });
     document.getElementById('cheat-no').addEventListener('click', () => UI.hideCheatModal());
-
-    // 自動購入（クリック不要・高い設備から）
-    setInterval(() => {
-      const placed = game.autoBuy();
-      if (placed.length) audio.play('pop1', 0.8, 0.35);
-    }, cfg.autoBuy.intervalMs);
 
     audio.unlock();
     requestAnimationFrame(loop);

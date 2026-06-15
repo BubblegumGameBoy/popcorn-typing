@@ -385,27 +385,22 @@ body.space-mode #bg-overlay {
    v2: 施設ストリップ / レベルUP / 通知移動 / チートモード
    ============================================================ */
 
-/* 施設ストリップ（HUD中央。自動で増える設備が見える） */
+/* 施設ストリップ（ステージ上部に大きめ表示。ここから粒が落ちてくる） */
 #facility-strip {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  gap: 8px; flex-wrap: wrap; max-width: 60%; margin: 0 12px;
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  z-index: 1; display: flex; align-items: flex-start; justify-content: center;
+  gap: 12px; flex-wrap: wrap; max-width: 88%;
 }
 .fac {
-  position: relative; display: flex; flex-direction: column; align-items: center;
-  width: 58px; padding: 3px 2px 2px; cursor: pointer;
-  background: rgba(255,255,255,.5); border: 2px solid transparent; border-radius: 10px;
+  position: relative; width: 66px; text-align: center;
   animation: fac-in .35s cubic-bezier(.2,1.5,.4,1);
 }
-.fac img { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(80,50,10,.3)); border-radius: 8px; }
+.fac img { width: 60px; height: 60px; object-fit: contain; filter: drop-shadow(0 4px 5px rgba(80,50,10,.35)); }
 .fac .fac-n {
-  position: absolute; right: 0; top: 0;
-  background: var(--pop-red); color: #fff; font-weight: 800; font-size: 10px;
-  padding: 0 5px; border-radius: 999px; border: 1px solid #fff;
+  position: absolute; right: 2px; bottom: 2px;
+  background: var(--pop-red); color: #fff; font-weight: 800; font-size: 12px;
+  padding: 1px 7px; border-radius: 999px; border: 2px solid #fff;
 }
-.fac .fac-cost { font-size: 10px; font-weight: 800; color: var(--ink-soft); margin-top: 1px; }
-.fac:not(.owned) { opacity: .6; }
-.fac.affordable { border-color: var(--butter); background: #fff; opacity: 1; }
-.fac.affordable .fac-cost { color: var(--caramel); }
 .fac.bump { animation: fac-bump .3s; }
 @keyframes fac-in { from{transform:scale(.3) translateY(-10px);opacity:0;} to{transform:scale(1);opacity:1;} }
 @keyframes fac-bump { 0%{transform:scale(1);} 45%{transform:scale(1.25);} 100%{transform:scale(1);} }
