@@ -68,6 +68,32 @@ const CONFIG = {
   //   1ワード打ち切ると、文字数 × 基礎粒 × wordBonusMult の臨時ボーナス＋大破裂。
   wordBonusMult: 3,
 
+  // ── 容器（目的）：満タンにしたら、もっとデカい容器へ ──────
+  //   cap = この容器を満タンにするのに必要な「累計生産」の増分。
+  //   クリアで報酬（cap × rewardRate の粒）をもらえる。
+  //   リスト終端を超えたら capを ×growthBeyond し続ける（無限）。
+  //   space:true の容器から背景が宇宙に。
+  containers: [
+    { name: 'Sカップ',        cap: 300 },
+    { name: 'Mカップ',        cap: 1500 },
+    { name: 'Lカップ',        cap: 9000 },
+    { name: 'メガバケツ',      cap: 50000 },
+    { name: '一斗缶',         cap: 300000 },
+    { name: '屋台ワゴン',      cap: 2e6 },
+    { name: 'ダンプトラック',  cap: 1.2e7 },
+    { name: 'ビルまるごと',    cap: 8e7 },
+    { name: '大きな山',       cap: 5e8 },
+    { name: '街ぜんぶ',       cap: 3e9 },
+    { name: '日本列島',       cap: 2e10 },
+    { name: '地球',          cap: 1.5e11, space: true },
+    { name: '月もいっしょに',  cap: 1e12,   space: true },
+    { name: '太陽系',         cap: 8e12,   space: true },
+    { name: '天の川銀河',      cap: 6e13,   space: true },
+    { name: '宇宙ぜんぶ',      cap: 5e14,   space: true },
+  ],
+  containerGrowthBeyond: 8,   // 終端超えで cap を ×8 ずつ
+  containerRewardRate: 0.5,   // クリア報酬 = cap × これ（粒）
+
   // ── 転生（プレステージ・フェーズA：塩の永続倍率） ──────
   prestige: {
     base: 1e5,        // この粒数で塩1個（sqrt曲線）。インフレ抑えめに合わせて下げた。
