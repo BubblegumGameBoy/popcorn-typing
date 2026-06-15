@@ -25,6 +25,11 @@ const UI = {
       comboBadge: $('combo-badge'), comboNum: $('combo-num'), comboMult: $('combo-mult'),
       pileFill: $('pile-fill'), pileLabel: $('pile-label'),
       khVariety: $('kh-variety'), khLevel: $('kh-level'), khEquip: $('kh-equip'),
+      stage: $('stage'), worldWatermark: $('world-watermark'),
+      slots: ['slot-tier0', 'slot-tier1', 'slot-tier2'].map(id => {
+        const el = $(id);
+        return { el, img: el.querySelector('img'), count: el.querySelector('.equip-count'), pick: -1 };
+      }),
       tabVariety: $('tab-variety'), tabEquip: $('tab-equip'), tabPrestige: $('tab-prestige'),
       toastArea: $('toast-area'),
     };
@@ -200,6 +205,48 @@ const UI = {
 
     // 山盛りメーター（次の塩1個までの進捗）
     this._updatePile(game);
+
+    // ステージ上の設備
+    this.updateEquipStage(game);
+  },
+
+  // ステージ各層の「代表設備」を表示（全部出すとうるさいので層ごと1台＝最上位）
+  //   tier0: フライパン/＋おばあちゃん  tier1: レンジ/映画館/ポン菓子  tier2: 工場
+  //   ワールドは中央の透かしとして別表示。
+  EQUIP_TIERS: [[0, 1], [2, 3, 4], [5]],
+  updateEquipStage(game) {
+    this.EQUIP_TIERS.forEach((cand, t) => {
+      let pick = -1;
+      for (const i of cand) if (game.equip[i] > 0) pick = i;   // 最上位の所有
+      const slot = this.el.slots[t];
+      if (pick >= 0) {
+        if (slot.pick !== pick) { slot.img.src = ASSETS.imgUrl(this.cfg.equipment[pick].img); slot.pick = pick; }
+        slot.el.classList.remove('hidden');
+        slot.count.textContent = game.equip[pick] > 1 ? '×' + game.equip[pick] : '';
+      } else {
+        slot.el.classList.add('hidden'); slot.pick = -1;
+      }
+    });
+    // ワールド（最上位）＝中央の透かし
+    const w = this.el.worldWatermark;
+    if (game.equip[6] > 0) {
+      if (!w.src) w.src = ASSETS.imgUrl(this.cfg.equipment[6].img);
+      w.classList.remove('hidden');
+    } else w.classList.add('hidden');
+  },
+
+  // 「○○を手に入れた！」フキダシ（要素の上に出す）
+  equipBubble(targetEl, text) {
+    if (!targetEl) return;
+    const sr = this.el.stage.getBoundingClientRect();
+    const tr = targetEl.getBoundingClientRect();
+    const b = document.createElement('div');
+    b.className = 'equip-bubble';
+    b.textContent = text;
+    b.style.left = (tr.left + tr.width / 2 - sr.left) + 'px';
+    b.style.top = (tr.top - sr.top + 8) + 'px';
+    this.el.stage.appendChild(b);
+    setTimeout(() => b.remove(), 2600);
   },
 
   _updatePile(game) {

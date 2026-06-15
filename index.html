@@ -45,6 +45,16 @@
 
   <!-- メイン：タイピング -->
   <main id="stage">
+    <!-- 終盤：ポップコーンワールドを中央に透かしで -->
+    <img id="world-watermark" class="hidden" alt="">
+
+    <!-- 設備を画面に置く（右パネルではなくステージ上で可視化） -->
+    <div id="equip-stage">
+      <div class="equip-slot hidden" id="slot-tier0"><img alt=""><span class="equip-count"></span></div>
+      <div class="equip-slot hidden" id="slot-tier1"><img alt=""><span class="equip-count"></span></div>
+      <div class="equip-slot hidden" id="slot-tier2"><img alt=""><span class="equip-count"></span></div>
+    </div>
+
     <canvas id="fx-canvas"></canvas>
 
     <div id="combo-badge" class="hidden">

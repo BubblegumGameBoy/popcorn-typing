@@ -12,6 +12,7 @@
   // ── 準備 ──────────────────────────────────────────
   const images = ASSETS.preloadImages();
   const game = GAME.Game.loadFrom(cfg);
+  window.__game = game;   // デバッグ用（コンソールから状態を覗ける）
   const audio = new FX.AudioKit();
   audio.loadSE('pop1', ASSETS.audioUrl('pop1'));
   audio.loadSE('pop2', ASSETS.audioUrl('pop2'));
@@ -46,6 +47,33 @@
     return { x: sp.left + sp.width / 2 - cr.left, y: sp.top + sp.height / 2 - cr.top, w: cr.width, h: cr.height };
   }
   function cornKey() { return game.variety.img; }
+
+  // ステージ上の設備（スロット＋ワールド透かし）の発生位置を集める
+  function autoEmitters() {
+    const cr = canvas.getBoundingClientRect();
+    const list = [];
+    const add = (el) => {
+      if (!el || el.classList.contains('hidden')) return;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2) return;
+      list.push({ x: r.left + r.width / 2 - cr.left, y: r.top + r.height * 0.35 - cr.top });
+    };
+    UI.el.slots.forEach(s => add(s.el));
+    add(UI.el.worldWatermark);
+    return list;
+  }
+  function emitAutoPuff() {
+    const es = autoEmitters();
+    if (!es.length) return;
+    const e = es[Math.floor(Math.random() * es.length)];
+    particles.burst(e.x, e.y, 1, cornKey(), 0.7);   // 設備からぽんっと1粒
+  }
+  // 設備を手に入れたフキダシ
+  function showEquipUnlock(i) {
+    UI.updateEquipStage(game);
+    const target = i === 6 ? UI.el.worldWatermark : UI.el.slots[cfg.equipment[i].tier].el;
+    UI.equipBubble(target, `${cfg.equipment[i].name} を手に入れた！`);
+  }
 
   /** 画面全体に散らして弾けさせる（中央だけにしない） */
   function scatterBurst(count, key, power, spread) {
@@ -127,7 +155,7 @@
       const r = game.buyBestEquip();
       if (r) {
         audio.play('pop1', 0.8, 0.5);
-        if (r.first) UI.toast(`⚙️ ${cfg.equipment[r.index].name} を手に入れた！`, { good: true, big: true });
+        if (r.first) showEquipUnlock(r.index);
       } else {
         UI.toast('設備を買う粒が足りない…', {});
       }
@@ -158,9 +186,10 @@
       return false;
     },
     buyEquip(i) {
+      const first = game.equip[i] === 0;
       if (game.buyEquip(i)) {
         audio.play('pop1', 0.8, 0.5);
-        if (game.equip[i] === 1) UI.toast(`⚙️ ${cfg.equipment[i].name} を手に入れた！`, { good: true, big: true });
+        if (first) showEquipUnlock(i);
         return true;
       }
       return false;
@@ -204,11 +233,18 @@
 
   // ── メインループ ──────────────────────────────────
   let last = performance.now();
-  let acc = 0;       // UI更新の間引き
+  let acc = 0;        // UI更新の間引き
+  let puffTimer = 0;  // 設備からの自動ポップ間隔
   function loop(now) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     game.tick(dt);
+    // 設備が動いてるのを見せる：CPSに応じて、設備の位置からぽんぽん弾ける（軽め・上限あり）
+    if (game.cps > 0) {
+      const rate = Math.min(7, 1 + Math.log10(game.cps + 1) * 2.2);
+      puffTimer -= dt;
+      if (puffTimer <= 0) { puffTimer = 1 / rate; emitAutoPuff(); }
+    }
     particles.update(dt);
     particles.draw();
     acc += dt;
