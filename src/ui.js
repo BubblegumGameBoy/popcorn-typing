@@ -303,6 +303,15 @@ const UI = {
     b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse');
   },
 
+  // 数字キーを押した手応え（光る／買えない時はNG）
+  flashKeyHint(key, ok) {
+    const btn = document.querySelector('.key-hint[data-key="' + key + '"]');
+    if (!btn) return;
+    const cls = ok ? 'pressed' : 'press-fail';
+    btn.classList.remove(cls); void btn.offsetWidth; btn.classList.add(cls);
+    setTimeout(() => btn.classList.remove(cls), 420);
+  },
+
   // ── トースト ────────────────────────────────────────
   toast(msg, opts = {}) {
     const t = document.createElement('div');

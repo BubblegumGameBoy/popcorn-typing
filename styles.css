@@ -233,6 +233,14 @@ html, body {
 .key-hint.locked { opacity: .6; }
 .key-hint.locked .kh-cost { color: #bbb; }
 .key-hint.maxed .kh-cost { color: var(--ink-soft); }
+.key-hint.pressed { animation: kh-press .42s cubic-bezier(.2,1.4,.4,1); }
+.key-hint.press-fail { animation: kh-fail .42s; }
+@keyframes kh-press {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); box-shadow: 0 0 0 5px var(--butter), 0 0 18px var(--gold); }
+  100% { transform: scale(1); }
+}
+@keyframes kh-fail { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
 @keyframes kbd-glow { 0%,100%{box-shadow:0 2px 0 rgba(0,0,0,.3);} 50%{box-shadow:0 2px 0 rgba(0,0,0,.3), 0 0 10px var(--pop-red);} }
 
 /* 山盛りメーター */

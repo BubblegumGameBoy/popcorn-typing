@@ -61,7 +61,7 @@
     const es = autoEmitters();
     if (!es.length) return;
     const e = es[Math.floor(Math.random() * es.length)];
-    particles.burst(e.x, e.y, 1, cornKey(), 0.7);   // 設備からぽんっと1粒
+    particles.burst(e.x, e.y, 1, cornKey(), 0.5);   // 設備からぽんっと1粒（軽め）
   }
   // 設備を手に入れたフキダシ
   function showEquipUnlock(i) {
@@ -70,19 +70,29 @@
     UI.equipBubble(target, `${cfg.equipment[i].name} を手に入れた！`);
   }
 
-  /** 画面“上の方”に散らして弾けさせる → ポップコーンが上から下へ降る */
-  function scatterBurst(count, key, power, spread) {
+  /** 画面のどこか（全体・上下左右）をランダムに返す */
+  function randomPos() {
     const cr = canvas.getBoundingClientRect();
-    const band = spread === undefined ? 0.7 : spread;   // 横の散らばり（画面幅比）
-    for (let i = 0; i < count; i++) {
-      const x = cr.width * (0.5 + (Math.random() - 0.5) * band);
-      const y = cr.height * (0.16 + Math.random() * 0.24);
-      particles.burst(x, y, 1, key, power);
+    return { x: cr.width * (0.1 + Math.random() * 0.8), y: cr.height * (0.12 + Math.random() * 0.72) };
+  }
+  /** 画面のあちこちで“花火”を上げる（お祝い演出用） */
+  function fireworksAcross(bursts, perBurst, key, power) {
+    for (let i = 0; i < bursts; i++) {
+      const p = randomPos();
+      particles.burst(p.x, p.y, perBurst, key, power);
     }
+  }
+  /** コンボに応じた「+N」数字の色・サイズ */
+  function gainStyle(cm) {
+    if (cm >= 10) return { color: '#ff4f86', size: 42 };
+    if (cm >= 6)  return { color: '#ff7a3c', size: 35 };
+    if (cm >= 3)  return { color: '#f4a72a', size: 29 };
+    if (cm >= 2)  return { color: '#e88a36', size: 25 };
+    return { color: '#d98326', size: 21 };
   }
 
   let lastComboMult = 1;
-  let keyPop = 0;   // pop1/pop2 を交互に鳴らす
+  let keyPop = 0;   // 高音/低音を交互に
 
   // ── 入力ハンドラ ──────────────────────────────────
   function onChar(ch) {
@@ -96,35 +106,40 @@
       UI.showCombo(0, 1);
       lastComboMult = 1;
       // ミスは焦げポップ＋鈍い音で軽くフィードバック
-      scatterBurst(1, 'charcoal', 0.6, 0.2);
-      audio.play('pop1', 0.5, 0.3);
+      const mp = randomPos();
+      particles.burst(mp.x, mp.y, 2, 'charcoal', 0.7);
+      audio.play('pop1', 0.55, 0.3);
       return;
     }
 
-    // 正解打鍵：1打鍵ごとに必ず「ポンッ！」＋レベルぶんの粒を散らす
-    game.typeChar();
+    // 正解打鍵：1打鍵 = 1発の“花火”が画面のどこかで破裂！
+    const gain = game.typeChar();
     UI.setProgress(r.done, r.left);
     UI.bumpCorn();
-    scatterBurst(game.particlesPerKey, cornKey(), 1);
-    // 高音(pop1)/低音(pop2) を交互に。毎キーしっかり鳴らす。
-    keyPop ^= 1;
-    audio.play(keyPop ? 'pop1' : 'pop2', 0.98 + Math.random() * 0.06, 0.85);
-
-    // コンボ更新
     const cm = game.comboMult;
+    const pos = randomPos();
+    const n = Math.min(22, 5 + game.level + (cm - 1) * 2);   // コンボ・レベルで粒が増える
+    particles.burst(pos.x, pos.y, n, cornKey(), 1.1 + Math.min(1, cm * 0.08));
+    // 「+N」を表示（コンボが伸びるほど大きく派手に）
+    const gs = gainStyle(cm);
+    particles.addText(pos.x, pos.y - 6, '+' + FORMAT.fmt(gain), gs.color, gs.size);
+    // 全体で“大きいやつ”（金属ポンッ）を毎キー。高音/低音を交互に。
+    keyPop ^= 1;
+    audio.play('metal', keyPop ? 1.06 : 0.92, 0.6);
+
+    // コンボ更新（節目はさらに盛大に）
     UI.showCombo(game.combo, cm);
     if (cm > lastComboMult) {
       lastComboMult = cm;
       UI.pulseCombo();
-      scatterBurst(cfg.fx.comboBurst, cornKey(), 1.6, 0.9);
-      audio.play('metal', 1, 0.6);
+      fireworksAcross(4, 8, cornKey(), 1.8);
+      audio.play('result', 1.1, 0.5);
       UI.toast(`コンボ ×${cm}！`, { good: true });
     }
 
     if (r.status === 'complete') {
       game.completeWord(currentWord.kana.length);
-      // ワード完成は控えめに（主役は1打鍵ごとのポンッ）
-      scatterBurst(6, cornKey(), 1.3, 0.9);
+      fireworksAcross(2, 7, cornKey(), 1.5);
       checkUnlockHints();
       nextWord();
     }
@@ -142,20 +157,25 @@
     if (current) nextWord();
   }
 
-  // 数字キーでキーボード完結（マウス不要）
+  // 数字キーでキーボード完結（マウス不要）。押した手応え＝音＋ボタンが光る。
   function onDigit(d) {
     audio.unlock();
-    if (d === '1') handlers.buyVariety(game.varietyIndex + 1);
-    else if (d === '2') handlers.levelUp();
+    let ok = false;
+    if (d === '1') ok = handlers.buyVariety(game.varietyIndex + 1);
+    else if (d === '2') ok = handlers.levelUp();
     else if (d === '3') {
       const r = game.buyBestEquip();
       if (r) {
-        audio.play('pop1', 0.8, 0.5);
+        ok = true;
+        audio.play('result', 1.3, 0.55);
+        fireworksAcross(4, 7, cornKey(), 2);
         if (r.first) showEquipUnlock(r.index);
       } else {
+        audio.play('pop1', 0.5, 0.3);
         UI.toast('設備を買う粒が足りない…', {});
       }
     }
+    UI.flashKeyHint(d, ok);
   }
 
   // ── 進行ヒント（品種解放など気づきを促す） ──────────
@@ -171,20 +191,22 @@
   // ── 購入ハンドラ ──────────────────────────────────
   const handlers = {
     buyVariety(i) {
-      if (i !== game.varietyIndex + 1) return false;
+      if (i !== game.varietyIndex + 1) { audio.play('pop1', 0.5, 0.3); return false; }
       if (game.buyVariety()) {
         UI.setCornSprite(cornKey());
         UI.toast(`🌽 ${game.variety.name} を研究した！`, { good: true, big: true });
-        audio.play('result', 1.2, 0.5);
-        scatterBurst(30, cornKey(), 2.2, 1.0);
+        audio.play('result', 1.2, 0.6);
+        fireworksAcross(6, 8, cornKey(), 2.2);
         return true;
       }
+      audio.play('pop1', 0.5, 0.3);
+      UI.toast(`研究に ${FORMAT.fmt(game.nextVariety ? game.nextVariety.cost : 0)} 粒 必要`, {});
       return false;
     },
     buyEquip(i) {
       const first = game.equip[i] === 0;
       if (game.buyEquip(i)) {
-        audio.play('pop1', 0.8, 0.5);
+        audio.play('result', 1.3, 0.5);
         if (first) showEquipUnlock(i);
         return true;
       }
@@ -192,12 +214,13 @@
     },
     levelUp() {
       if (game.levelUp()) {
-        audio.play('metal', 1.25, 0.7);
+        audio.play('result', 1.4, 0.65);
         UI.bumpCorn();
         UI.toast(`⭐ レベル ${game.level}！ はじける粒が増えた`, { good: true, big: true });
-        scatterBurst(20, cornKey(), 2, 1.0);
+        fireworksAcross(5, 8, cornKey(), 2);
         return true;
       }
+      audio.play('pop1', 0.5, 0.3);
       UI.toast(`レベルアップに ${FORMAT.fmt(game.levelCost)} 粒 必要`, {});
       return false;
     },
@@ -209,8 +232,8 @@
       audio.play('result', 1, 0.8);
       UI.setCornSprite(cornKey());
       UI.toast(`🧂 転生！ 塩 ${FORMAT.fmt(game.salt)} 個（全生産 ×${(game.globalMult).toFixed(1)}）`, { good: true, big: true });
-      // 黄金の大破裂
-      scatterBurst(60, 'gold', 2.5, 1.1);
+      // 黄金の大花火
+      fireworksAcross(10, 9, 'gold', 2.5);
       hintedVariety = -1;
       nextWord();
       game.save();
