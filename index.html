@@ -6,97 +6,114 @@
 <title>ポップコーン・タイピング 🍿</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍿</text></svg>">
 <link rel="stylesheet" href="styles.css">
-<!-- 世界ランキングを使う場合はここに Firebase Realtime DB のURLを設定:
-<script>window.LEADERBOARD_URL = 'https://xxxx-default-rtdb.firebaseio.com';</script> -->
 </head>
 <body>
 
+<!-- 背景 -->
 <div id="bg"></div>
 <div id="bg-overlay"></div>
 
-<!-- ====== タイトル ====== -->
+<!-- ====== タイトル画面 ====== -->
 <div id="title-screen" class="screen">
   <div class="title-card">
     <h1 class="game-title">🍿 ポップコーン<br>タイピング</h1>
-    <p class="subtitle">60秒でどれだけ焼ける！？ 打って弾けさせろ！</p>
-    <p class="best-line">ベスト: <span id="title-best">0</span> 粒</p>
-    <button id="to-play" class="big-btn">▶ スタート</button>
-    <button id="to-shop" class="sub-btn">🛒 ショップ</button>
-    <p class="kbd-note">※ キーボードでローマ字入力（PC推奨）</p>
+    <p class="subtitle">打って、焼いて、世界をポップコーンで埋めつくせ！</p>
+    <button id="start-btn" class="big-btn">▶ はじめる</button>
+    <p class="kbd-note">※ キーボードでローマ字入力するゲームです（PC推奨）</p>
   </div>
 </div>
 
-<!-- ====== ショップ ====== -->
-<div id="shop-screen" class="screen hidden">
-  <header class="shop-head">
-    <h2>🛒 ショップ</h2>
-    <div class="bank">🍿 <span id="shop-bank">0</span></div>
-  </header>
-  <div class="shop-scroll">
-    <h3 class="shop-cat">🌽 品種（1打鍵の強さ）</h3>
-    <div id="shop-varieties" class="card-grid"></div>
-    <h3 class="shop-cat">✨ アーティファクト（永久強化）</h3>
-    <div id="shop-artifacts" class="card-grid"></div>
-  </div>
-  <footer class="shop-foot">
-    <button id="shop-back" class="sub-btn">← もどる</button>
-    <button id="shop-start" class="big-btn">▶ この強さで挑戦！</button>
-  </footer>
-</div>
+<!-- ====== ゲーム画面 ====== -->
+<div id="game-screen" class="screen hidden">
 
-<!-- ====== プレイ（60秒） ====== -->
-<div id="play-screen" class="screen hidden">
-  <header id="play-hud">
-    <div class="hud-time">⏱ <span id="time-left">60</span></div>
-    <div class="hud-score"><img id="score-icon" alt="">🍿 <span id="run-score">0</span></div>
-    <div class="hud-combo" id="play-combo"><span id="play-combo-num">0</span><small>コンボ</small><span id="play-combo-mult">×1</span></div>
+  <!-- 上部HUD -->
+  <header id="hud">
+    <div class="hud-main">
+      <img id="hud-corn-icon" alt="popcorn">
+      <div class="hud-counts">
+        <div id="popcorn-count">0</div>
+        <div id="cps-line"><span id="cps-count">0</span> 粒/秒</div>
+      </div>
+    </div>
+    <div class="hud-stats">
+      <div class="stat"><span class="stat-label">レベル</span><span id="level-count">1</span></div>
+      <div class="stat"><span class="stat-label">1打鍵</span><span id="perchar-count">1</span></div>
+      <div class="stat salt-stat"><img id="salt-icon" alt="salt"><span id="salt-count">0</span></div>
+      <button id="mute-btn" class="icon-btn" title="音のオン/オフ">🔊</button>
+    </div>
   </header>
+
+  <!-- メイン：タイピング -->
   <main id="stage">
+    <!-- 終盤：ポップコーンワールドを中央に透かしで -->
+    <img id="world-watermark" class="hidden" alt="">
+
+    <!-- 設備を画面に置く（右パネルではなくステージ上で可視化） -->
+    <div id="equip-stage">
+      <div class="equip-slot hidden" id="slot-tier0"><img alt=""><span class="equip-count"></span></div>
+      <div class="equip-slot hidden" id="slot-tier1"><img alt=""><span class="equip-count"></span></div>
+      <div class="equip-slot hidden" id="slot-tier2"><img alt=""><span class="equip-count"></span></div>
+    </div>
+
     <canvas id="fx-canvas"></canvas>
+
+    <div id="combo-badge" class="hidden">
+      <span id="combo-num">0</span><span class="combo-x">コンボ</span>
+      <span id="combo-mult">×1</span>
+    </div>
+
     <div id="typing-panel">
       <div id="word-display">レディ…？</div>
       <div id="romaji-guide"><span id="romaji-done"></span><span id="romaji-left"></span></div>
     </div>
-    <div id="time-bar"><div id="time-bar-fill"></div></div>
+
+    <!-- ポップコーン生成ゲージ（今どれだけ作ってるか） -->
+    <div id="gen-gauge" title="いまのポップコーン生成いきおい">
+      <div id="gen-fill"></div>
+      <div id="gen-spark">🍿</div>
+      <div id="gen-label">0<small>粒/秒</small></div>
+    </div>
+
+    <!-- 数字キーでキーボード完結（マウス不要） -->
+    <div id="key-hints">
+      <button class="key-hint" data-key="1"><kbd>1</kbd><span class="kh-name">品種研究</span><span class="kh-cost" id="kh-variety"></span></button>
+      <button class="key-hint" data-key="2"><kbd>2</kbd><span class="kh-name">レベルUP</span><span class="kh-cost" id="kh-level"></span></button>
+      <button class="key-hint" data-key="3"><kbd>3</kbd><span class="kh-name">設備をふやす</span><span class="kh-cost" id="kh-equip"></span></button>
+    </div>
+
+    <!-- 山盛りメーター（転生までの目安） -->
+    <div id="pile-wrap" title="転生までの目安">
+      <div id="pile-fill"></div>
+      <div id="pile-label"></div>
+    </div>
   </main>
-  <div id="countdown" class="hidden"><span id="countdown-num">3</span></div>
+
+  <!-- 右：ショップ -->
+  <aside id="shop">
+    <nav id="shop-tabs">
+      <button class="tab active" data-tab="variety">🌽 品種</button>
+      <button class="tab" data-tab="equip">⚙️ 設備</button>
+      <button class="tab" data-tab="prestige">🧂 転生</button>
+    </nav>
+    <div id="shop-body">
+      <section id="tab-variety" class="tab-panel active"></section>
+      <section id="tab-equip" class="tab-panel"></section>
+      <section id="tab-prestige" class="tab-panel"></section>
+    </div>
+  </aside>
+
 </div>
 
-<!-- ====== リザルト ====== -->
-<div id="result-screen" class="screen hidden">
-  <div class="result-card">
-    <h2 class="result-title">タイムアップ！🎉</h2>
-    <div class="result-score">🍿 <span id="result-score">0</span></div>
-    <p id="result-rankline" class="result-rankline"></p>
-    <div class="result-stats">
-      <div><span id="result-wpm">0</span><small>WPM</small></div>
-      <div><span id="result-acc">100</span><small>%命中</small></div>
-      <div><span id="result-combo">0</span><small>最大コンボ</small></div>
-      <div><span id="result-words">0</span><small>ワード</small></div>
-    </div>
-
-    <div class="rank-tabs">
-      <button class="rank-tab active" data-board="local">📱 自己ベスト</button>
-      <button class="rank-tab" data-board="global">🌍 世界</button>
-    </div>
-    <ol id="rank-list" class="rank-list"></ol>
-
-    <div class="result-buttons">
-      <button id="result-shop" class="sub-btn">🛒 ショップ</button>
-      <button id="result-retry" class="big-btn">🔁 もう一回！</button>
-    </div>
-  </div>
-</div>
-
+<!-- トースト -->
 <div id="toast-area"></div>
 
+<!-- スクリプト（依存順） -->
 <script src="src/assets.js"></script>
 <script src="src/format.js"></script>
 <script src="src/config.js"></script>
 <script src="src/data/words.js"></script>
 <script src="src/typing-engine.js"></script>
 <script src="src/effects.js"></script>
-<script src="src/leaderboard.js"></script>
 <script src="src/game.js"></script>
 <script src="src/ui.js"></script>
 <script src="src/main.js"></script>
