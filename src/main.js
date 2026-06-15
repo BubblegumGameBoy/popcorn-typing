@@ -41,11 +41,6 @@
   }
 
   // ── 演出ヘルパ ────────────────────────────────────
-  function cornCenter() {
-    const cr = canvas.getBoundingClientRect();
-    const sp = UI.el.cornSprite.getBoundingClientRect();
-    return { x: sp.left + sp.width / 2 - cr.left, y: sp.top + sp.height / 2 - cr.top, w: cr.width, h: cr.height };
-  }
   function cornKey() { return game.variety.img; }
 
   // ステージ上の設備（スロット＋ワールド透かし）の発生位置を集める
@@ -75,18 +70,19 @@
     UI.equipBubble(target, `${cfg.equipment[i].name} を手に入れた！`);
   }
 
-  /** 画面全体に散らして弾けさせる（中央だけにしない） */
+  /** 画面“上の方”に散らして弾けさせる → ポップコーンが上から下へ降る */
   function scatterBurst(count, key, power, spread) {
-    const c = cornCenter();
+    const cr = canvas.getBoundingClientRect();
     const band = spread === undefined ? 0.7 : spread;   // 横の散らばり（画面幅比）
     for (let i = 0; i < count; i++) {
-      const x = c.w * (0.5 + (Math.random() - 0.5) * band);
-      const y = c.y + (Math.random() - 0.5) * c.h * 0.35;
+      const x = cr.width * (0.5 + (Math.random() - 0.5) * band);
+      const y = cr.height * (0.16 + Math.random() * 0.24);
       particles.burst(x, y, 1, key, power);
     }
   }
 
   let lastComboMult = 1;
+  let keyPop = 0;   // pop1/pop2 を交互に鳴らす
 
   // ── 入力ハンドラ ──────────────────────────────────
   function onChar(ch) {
@@ -105,13 +101,14 @@
       return;
     }
 
-    // 正解打鍵：1打鍵ごとに必ず効果音＋レベルぶんの粒を散らす
+    // 正解打鍵：1打鍵ごとに必ず「ポンッ！」＋レベルぶんの粒を散らす
     game.typeChar();
     UI.setProgress(r.done, r.left);
     UI.bumpCorn();
     scatterBurst(game.particlesPerKey, cornKey(), 1);
-    // ピッチを揺らして連打を気持ちよく（毎回しっかり鳴らす）
-    audio.play(Math.random() < 0.5 ? 'pop1' : 'pop2', 0.9 + Math.random() * 0.35, 0.78);
+    // 高音(pop1)/低音(pop2) を交互に。毎キーしっかり鳴らす。
+    keyPop ^= 1;
+    audio.play(keyPop ? 'pop1' : 'pop2', 0.98 + Math.random() * 0.06, 0.85);
 
     // コンボ更新
     const cm = game.comboMult;
@@ -126,9 +123,8 @@
 
     if (r.status === 'complete') {
       game.completeWord(currentWord.kana.length);
-      // ターンッ！と大破裂（画面いっぱいに散らす）
-      scatterBurst(cfg.fx.wordBurst, cornKey(), 2, 1.0);
-      audio.play('metal', 1.1, 0.7);
+      // ワード完成は控えめに（主役は1打鍵ごとのポンッ）
+      scatterBurst(6, cornKey(), 1.3, 0.9);
       checkUnlockHints();
       nextWord();
     }
@@ -235,10 +231,16 @@
   let last = performance.now();
   let acc = 0;        // UI更新の間引き
   let puffTimer = 0;  // 設備からの自動ポップ間隔
+  let lastTotal = 0;  // 生成レート計測用
+  let genRate = 0;    // 平滑化した「いまの生成（粒/秒）」
   function loop(now) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     game.tick(dt);
+    // 生成レート（手入力＋自動）を平滑化
+    const inst = dt > 0 ? (game.totalRun - lastTotal) / dt : 0;
+    lastTotal = game.totalRun;
+    genRate += (inst - genRate) * Math.min(1, dt * 5);
     // 設備が動いてるのを見せる：CPSに応じて、設備の位置からぽんぽん弾ける（軽め・上限あり）
     if (game.cps > 0) {
       const rate = Math.min(7, 1 + Math.log10(game.cps + 1) * 2.2);
@@ -248,7 +250,7 @@
     particles.update(dt);
     particles.draw();
     acc += dt;
-    if (acc >= 0.1) { acc = 0; UI.refresh(game); }  // 数値は10fpsで十分
+    if (acc >= 0.1) { acc = 0; UI.refresh(game); UI.setGen(genRate, 1e5); }  // 数値は10fpsで十分
     requestAnimationFrame(loop);
   }
 
@@ -261,6 +263,7 @@
     UI.setCornSprite(cornKey());
     UI.buildShop(game, handlers);
     UI.refresh(game);
+    lastTotal = game.totalRun;
     nextWord();
 
     // オフライン生産

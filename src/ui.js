@@ -19,9 +19,10 @@ const UI = {
       popcorn: $('popcorn-count'), cps: $('cps-count'), perChar: $('perchar-count'),
       level: $('level-count'),
       salt: $('salt-count'), saltIcon: $('salt-icon'), hudCorn: $('hud-corn-icon'),
-      cornSprite: $('corn-sprite'), wordDisplay: $('word-display'),
+      wordDisplay: $('word-display'),
       romajiDone: $('romaji-done'), romajiLeft: $('romaji-left'),
       typingPanel: $('typing-panel'),
+      genFill: $('gen-fill'), genLabel: $('gen-label'),
       comboBadge: $('combo-badge'), comboNum: $('combo-num'), comboMult: $('combo-mult'),
       pileFill: $('pile-fill'), pileLabel: $('pile-label'),
       khVariety: $('kh-variety'), khLevel: $('kh-level'), khEquip: $('kh-equip'),
@@ -269,13 +270,17 @@ const UI = {
     this.el.romajiLeft.textContent = left;
   },
   setCornSprite(imgKey) {
-    const url = ASSETS.imgUrl(imgKey);
-    this.el.cornSprite.src = url;
-    this.el.hudCorn.src = url;
+    this.el.hudCorn.src = ASSETS.imgUrl(imgKey);   // HUDの通貨アイコンのみ
   },
   bumpCorn() {
-    const c = this.el.cornSprite;
-    c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump');
+    const p = this.el.typingPanel;
+    p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump');
+  },
+  /** 生成ゲージ更新。rate=現在の生成（粒/秒）, scale=満タンとみなす基準 */
+  setGen(rate, scale) {
+    const pct = Math.max(0, Math.min(100, (Math.log10(rate + 1) / Math.log10(scale + 1)) * 100));
+    this.el.genFill.style.height = pct.toFixed(0) + '%';
+    this.el.genLabel.innerHTML = FORMAT.fmtRate(rate) + '<small>粒/秒</small>';
   },
   flashMiss() {
     const p = this.el.typingPanel;
