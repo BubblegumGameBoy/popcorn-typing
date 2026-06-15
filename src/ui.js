@@ -24,13 +24,11 @@ const UI = {
       typingPanel: $('typing-panel'),
       genFill: $('gen-fill'), genLabel: $('gen-label'),
       comboBadge: $('combo-badge'), comboNum: $('combo-num'), comboMult: $('combo-mult'),
-      pileFill: $('pile-fill'), pileLabel: $('pile-label'),
       khVariety: $('kh-variety'), khLevel: $('kh-level'), khEquip: $('kh-equip'),
-      stage: $('stage'), worldWatermark: $('world-watermark'),
-      slots: ['slot-tier0', 'slot-tier1', 'slot-tier2'].map(id => {
-        const el = $(id);
-        return { el, img: el.querySelector('img'), count: el.querySelector('.equip-count'), pick: -1 };
-      }),
+      stage: $('stage'),
+      containerName: $('container-name'), containerBox: $('container-box'),
+      containerFill: $('container-fill'), containerAmount: $('container-amount'),
+      containerBarFill: $('container-bar-fill'),
       tabVariety: $('tab-variety'), tabEquip: $('tab-equip'), tabPrestige: $('tab-prestige'),
       toastArea: $('toast-area'),
     };
@@ -204,63 +202,23 @@ const UI = {
       this.el.prestigeHint.textContent = `あと ${F.fmt(Math.max(0, this.cfg.prestige.base - game.totalAllTime))} 粒で塩1個`;
     }
 
-    // 山盛りメーター（次の塩1個までの進捗）
-    this._updatePile(game);
-
-    // ステージ上の設備
-    this.updateEquipStage(game);
+    // 容器（目的）
+    this.updateContainer(game);
   },
 
-  // ステージ各層の「代表設備」を表示（全部出すとうるさいので層ごと1台＝最上位）
-  //   tier0: フライパン/＋おばあちゃん  tier1: レンジ/映画館/ポン菓子  tier2: 工場
-  //   ワールドは中央の透かしとして別表示。
-  EQUIP_TIERS: [[0, 1], [2, 3, 4], [5]],
-  updateEquipStage(game) {
-    this.EQUIP_TIERS.forEach((cand, t) => {
-      let pick = -1;
-      for (const i of cand) if (game.equip[i] > 0) pick = i;   // 最上位の所有
-      const slot = this.el.slots[t];
-      if (pick >= 0) {
-        if (slot.pick !== pick) { slot.img.src = ASSETS.imgUrl(this.cfg.equipment[pick].img); slot.pick = pick; }
-        slot.el.classList.remove('hidden');
-        slot.count.textContent = game.equip[pick] > 1 ? '×' + game.equip[pick] : '';
-      } else {
-        slot.el.classList.add('hidden'); slot.pick = -1;
-      }
-    });
-    // ワールド（最上位）＝中央の透かし
-    const w = this.el.worldWatermark;
-    if (game.equip[6] > 0) {
-      if (!w.src) w.src = ASSETS.imgUrl(this.cfg.equipment[6].img);
-      w.classList.remove('hidden');
-    } else w.classList.add('hidden');
+  // 容器の見た目を更新（満タンメーター＋サイズ名＋宇宙背景）
+  updateContainer(game) {
+    const c = game.containerState();
+    this.el.containerName.textContent = c.name;
+    const pct = c.pct * 100;
+    this.el.containerFill.style.height = pct.toFixed(1) + '%';
+    this.el.containerBarFill.style.width = pct.toFixed(1) + '%';
+    this.el.containerAmount.textContent = FORMAT.fmt(c.filled) + ' / ' + FORMAT.fmt(c.cap);
+    document.body.classList.toggle('space-mode', !!c.space);
   },
-
-  // 「○○を手に入れた！」フキダシ（要素の上に出す）
-  equipBubble(targetEl, text) {
-    if (!targetEl) return;
-    const sr = this.el.stage.getBoundingClientRect();
-    const tr = targetEl.getBoundingClientRect();
-    const b = document.createElement('div');
-    b.className = 'equip-bubble';
-    b.textContent = text;
-    b.style.left = (tr.left + tr.width / 2 - sr.left) + 'px';
-    b.style.top = (tr.top - sr.top + 8) + 'px';
-    this.el.stage.appendChild(b);
-    setTimeout(() => b.remove(), 2600);
-  },
-
-  _updatePile(game) {
-    // 現在塩→次の塩 までの総生産進捗（sqrt曲線の逆算）
-    const base = this.cfg.prestige.base;
-    const cur = game.salt;
-    const lo = base * cur * cur;
-    const hi = base * (cur + 1) * (cur + 1);
-    const ratio = Math.max(0, Math.min(1, (game.totalAllTime - lo) / (hi - lo)));
-    this.el.pileFill.style.width = (ratio * 100).toFixed(1) + '%';
-    this.el.pileLabel.textContent = game.canPrestige
-      ? `🧂 転生できる！（塩 +${FORMAT.fmt(game.saltGain)}）`
-      : `次の塩まで ${(ratio * 100).toFixed(0)}%`;
+  clearContainerAnim() {
+    const b = this.el.containerBox;
+    b.classList.remove('clear'); void b.offsetWidth; b.classList.add('clear');
   },
 
   // ── タイピング表示 ──────────────────────────────────

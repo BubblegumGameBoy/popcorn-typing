@@ -27,8 +27,9 @@ class Game {
     this.wordsCleared = 0;
     if (newGame) {
       this.salt = 0;              // 転生通貨（永続）
-      this.totalAllTime = 0;      // 全周回の総生産（塩算出のもと）
+      this.totalAllTime = 0;      // 全周回の総生産（塩算出のもと＝容器の進捗）
       this.prestiges = 0;
+      this.containersCleared = 0; // 満タンにした容器の数（永続）
     }
     this.lastSeen = Date.now();
   }
@@ -152,6 +153,47 @@ class Game {
     return null;
   }
 
+  // ── 容器（目的：満タンにする） ──────────────────────
+  //   進捗は totalAllTime（全生産）に紐づく単調増加。リセットされない。
+  _containerCap(i) {
+    const C = this.cfg.containers, g = this.cfg.containerGrowthBeyond;
+    return i < C.length ? C[i].cap : C[C.length - 1].cap * Math.pow(g, i - (C.length - 1));
+  }
+  _containerName(i) {
+    const C = this.cfg.containers, g = this.cfg.containerGrowthBeyond;
+    return i < C.length ? C[i].name : `宇宙のむこう ×${Math.round(Math.pow(g, i - (C.length - 1)))}`;
+  }
+  _containerSpace(i) {
+    const C = this.cfg.containers;
+    return i < C.length ? !!C[i].space : true;
+  }
+  /** 現在の容器の状態 {index, name, filled, cap, pct, space} */
+  containerState() {
+    let i = 0, acc = 0;
+    while (i < 5000) {
+      const cap = this._containerCap(i);
+      if (this.totalAllTime >= acc + cap) { acc += cap; i++; } else break;
+    }
+    const cap = this._containerCap(i);
+    const filled = this.totalAllTime - acc;
+    return { index: i, name: this._containerName(i), filled, cap,
+             pct: Math.max(0, Math.min(1, filled / cap)), space: this._containerSpace(i) };
+  }
+  /** 新たに満タンになった容器の報酬を回収。クリアした容器の配列を返す。 */
+  collectContainerRewards() {
+    const idx = this.containerState().index;
+    const out = [];
+    let guard = 0;
+    while (this.containersCleared < idx && guard++ < 1000) {
+      const ci = this.containersCleared;
+      const reward = Math.floor(this._containerCap(ci) * this.cfg.containerRewardRate);
+      this.popcorn += reward;   // 報酬は所持のみ（totalAllTimeには足さない＝暴走防止）
+      out.push({ index: ci, name: this._containerName(ci), reward, nextName: this._containerName(ci + 1) });
+      this.containersCleared++;
+    }
+    return out;
+  }
+
   // ── 転生（プレステージ） ────────────────────────────
   /** 今転生したら得られる塩の総数（累計ベース） */
   get potentialSalt() {
@@ -192,7 +234,7 @@ class Game {
       v: 1,
       popcorn: this.popcorn, totalRun: this.totalRun, totalAllTime: this.totalAllTime,
       varietyIndex: this.varietyIndex, equip: this.equip, level: this.level,
-      salt: this.salt, prestiges: this.prestiges,
+      salt: this.salt, prestiges: this.prestiges, containersCleared: this.containersCleared,
       maxCombo: this.maxCombo, wordsCleared: this.wordsCleared,
       lastSeen: Date.now(),
     });
@@ -210,6 +252,7 @@ class Game {
       this.level = d.level || 1;
       this.salt = d.salt || 0;
       this.prestiges = d.prestiges || 0;
+      this.containersCleared = d.containersCleared || 0;
       this.maxCombo = d.maxCombo || 0;
       this.wordsCleared = d.wordsCleared || 0;
       this.lastSeen = d.lastSeen || Date.now();

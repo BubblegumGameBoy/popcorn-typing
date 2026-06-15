@@ -43,31 +43,20 @@
   // ── 演出ヘルパ ────────────────────────────────────
   function cornKey() { return game.variety.img; }
 
-  // ステージ上の設備（スロット＋ワールド透かし）の発生位置を集める
-  function autoEmitters() {
+  // 容器の位置（自動生産の“ぽんっ”を容器のまわりで弾けさせる）
+  function containerPos() {
     const cr = canvas.getBoundingClientRect();
-    const list = [];
-    const add = (el) => {
-      if (!el || el.classList.contains('hidden')) return;
-      const r = el.getBoundingClientRect();
-      if (r.width < 2) return;
-      list.push({ x: r.left + r.width / 2 - cr.left, y: r.top + r.height * 0.35 - cr.top });
-    };
-    UI.el.slots.forEach(s => add(s.el));
-    add(UI.el.worldWatermark);
-    return list;
+    const box = document.getElementById('container-box');
+    if (!box) return { x: cr.width / 2, y: cr.height * 0.3 };
+    const r = box.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - cr.left, y: r.top + r.height * 0.4 - cr.top };
   }
   function emitAutoPuff() {
-    const es = autoEmitters();
-    if (!es.length) return;
-    const e = es[Math.floor(Math.random() * es.length)];
-    particles.burst(e.x, e.y, 1, cornKey(), 0.5);   // 設備からぽんっと1粒（軽め）
+    const p = containerPos();
+    particles.burst(p.x + (Math.random() - 0.5) * 50, p.y + (Math.random() - 0.5) * 40, 1, cornKey(), 0.5);
   }
-  // 設備を手に入れたフキダシ
-  function showEquipUnlock(i) {
-    UI.updateEquipStage(game);
-    const target = i === 6 ? UI.el.worldWatermark : UI.el.slots[cfg.equipment[i].tier].el;
-    UI.equipBubble(target, `${cfg.equipment[i].name} を手に入れた！`);
+  function notifyEquip(i) {
+    UI.toast(`⚙️ ${cfg.equipment[i].name} を設置！`, { good: true });
   }
 
   /** 画面のどこか（全体・上下左右）をランダムに返す */
@@ -170,7 +159,7 @@
         ok = true;
         audio.play('result', 1.3, 0.55);
         fireworksAcross(4, 7, cornKey(), 2);
-        if (r.first) showEquipUnlock(r.index);
+        if (r.first) notifyEquip(r.index);
       } else {
         audio.play('pop1', 0.5, 0.3);
         UI.toast('設備を買う粒が足りない…', {});
@@ -208,7 +197,7 @@
       const first = game.equip[i] === 0;
       if (game.buyEquip(i)) {
         audio.play('result', 1.3, 0.5);
-        if (first) showEquipUnlock(i);
+        if (first) notifyEquip(i);
         return true;
       }
       return false;
@@ -265,6 +254,16 @@
     const inst = dt > 0 ? (game.totalRun - lastTotal) / dt : 0;
     lastTotal = game.totalRun;
     genRate += (inst - genRate) * Math.min(1, dt * 5);
+    // 容器が満タンになったら：クリア演出＋報酬
+    const cleared = game.collectContainerRewards();
+    if (cleared.length) {
+      const lastC = cleared[cleared.length - 1];
+      const reward = cleared.reduce((s, c) => s + c.reward, 0);
+      UI.clearContainerAnim();
+      fireworksAcross(8, 8, cornKey(), 2.3);
+      audio.play('result', 1.0, 0.7);
+      UI.toast(`🎉「${lastC.name}」満タン！ 報酬+${FORMAT.fmt(reward)}粒 → 次は「${lastC.nextName}」`, { good: true, big: true });
+    }
     // 設備が動いてるのを見せる：CPSに応じて、設備の位置からぽんぽん弾ける（軽め・上限あり）
     if (game.cps > 0) {
       const rate = Math.min(7, 1 + Math.log10(game.cps + 1) * 2.2);
