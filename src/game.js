@@ -66,9 +66,10 @@ class Game {
   /** 1打鍵の獲得粒 */
   get perChar() { return this.base * this.comboMult * this.globalMult; }
 
-  /** 花火の粒数（コンボで増える・上限あり） */
+  /** 花火の粒数（最初は1個。コンボで少しずつ増える・上限あり） */
   get particlesPerKey() {
-    return Math.min(22, this.cfg.fx.keyBurstBase + Math.round((this.comboMult - 1) * 1.5));
+    const f = this.cfg.fx;
+    return Math.min(f.keyBurstMax, f.keyBurstBase + Math.floor((this.comboMult - 1) * f.keyBurstPerCombo));
   }
 
   // ── 1戦の進行 ──────────────────────────────────────

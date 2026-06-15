@@ -82,12 +82,12 @@
     if (cm > lastComboMult) {
       lastComboMult = cm;
       UI.pulseCombo();
-      fireworksAcross(4, 8, cornKey(), 1.8);
+      fireworksAcross(2, 4, cornKey(), 1.6);
       audio.play('result', 1.1, 0.45);
     }
     if (r.status === 'complete') {
       game.completeWord(currentWord.kana.length);
-      fireworksAcross(2, 7, cornKey(), 1.5);
+      fireworksAcross(1, 4, cornKey(), 1.4);
       nextWord();
     }
   }
@@ -125,7 +125,7 @@
   let lastTs = 0, currentBoard = 'local';
   async function finishRun(res) {
     audio.play('result', 1, 0.8);
-    fireworksAcross(14, 9, 'gold', 2.4);
+    fireworksAcross(6, 6, 'gold', 2.2);
     UI.showResult(res);
     UI.show('result');
     game.save();
