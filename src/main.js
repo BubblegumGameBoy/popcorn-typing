@@ -1,18 +1,17 @@
 /*
  * ============================================================
- *  メイン / 統合  (main.js)
+ *  メイン / 統合  (main.js)  ― スコアアタック版
  * ============================================================
- *  すべてを配線して動かす。
- *  入力(typing-engine) → ゲーム状態(game) → 演出(effects) / 表示(ui)
+ *  タイトル → ショップ → 60秒プレイ → リザルト＆ランキング
  * ============================================================
  */
 (function () {
   const cfg = CONFIG;
-
-  // ── 準備 ──────────────────────────────────────────
   const images = ASSETS.preloadImages();
   const game = GAME.Game.loadFrom(cfg);
-  window.__game = game;   // デバッグ用（コンソールから状態を覗ける）
+  window.__game = game;
+  Leaderboard.init(cfg);
+
   const audio = new FX.AudioKit();
   audio.loadSE('pop1', ASSETS.audioUrl('pop1'));
   audio.loadSE('pop2', ASSETS.audioUrl('pop2'));
@@ -20,69 +19,21 @@
   audio.loadSE('result', ASSETS.audioUrl('result'));
   audio.loadBGM(ASSETS.audioUrl('bgm'));
 
-  // 背景
   document.getElementById('bg').style.backgroundImage = `url("${ASSETS.imgUrl('park')}")`;
 
   UI.init(cfg);
   const canvas = document.getElementById('fx-canvas');
   const particles = new FX.ParticleSystem(canvas, images, cfg.fx.maxParticles);
 
-  // ── お題の管理 ────────────────────────────────────
-  let current = null;     // TypingWord
-  let currentWord = null; // {text, kana}
-
-  function nextWord() {
-    // 進行に応じて少しずつ難しめも混ぜる（難易度上限は品種で開放）
-    const maxDiff = Math.min(3, 1 + game.varietyIndex);
-    currentWord = WordBank.random(maxDiff);
-    current = new TypingWord(currentWord.kana);
-    UI.setWord(currentWord.text);
-    UI.setProgress('', current.left);
-  }
-
   // ── 演出ヘルパ ────────────────────────────────────
   function cornKey() { return game.variety.img; }
-
-  // ステージ上の設備（スロット＋ワールド透かし）の発生位置を集める
-  function autoEmitters() {
-    const cr = canvas.getBoundingClientRect();
-    const list = [];
-    const add = (el) => {
-      if (!el || el.classList.contains('hidden')) return;
-      const r = el.getBoundingClientRect();
-      if (r.width < 2) return;
-      list.push({ x: r.left + r.width / 2 - cr.left, y: r.top + r.height * 0.35 - cr.top });
-    };
-    UI.el.slots.forEach(s => add(s.el));
-    add(UI.el.worldWatermark);
-    return list;
-  }
-  function emitAutoPuff() {
-    const es = autoEmitters();
-    if (!es.length) return;
-    const e = es[Math.floor(Math.random() * es.length)];
-    particles.burst(e.x, e.y, 1, cornKey(), 0.5);   // 設備からぽんっと1粒（軽め）
-  }
-  // 設備を手に入れたフキダシ
-  function showEquipUnlock(i) {
-    UI.updateEquipStage(game);
-    const target = i === 6 ? UI.el.worldWatermark : UI.el.slots[cfg.equipment[i].tier].el;
-    UI.equipBubble(target, `${cfg.equipment[i].name} を手に入れた！`);
-  }
-
-  /** 画面のどこか（全体・上下左右）をランダムに返す */
   function randomPos() {
     const cr = canvas.getBoundingClientRect();
     return { x: cr.width * (0.1 + Math.random() * 0.8), y: cr.height * (0.12 + Math.random() * 0.72) };
   }
-  /** 画面のあちこちで“花火”を上げる（お祝い演出用） */
   function fireworksAcross(bursts, perBurst, key, power) {
-    for (let i = 0; i < bursts; i++) {
-      const p = randomPos();
-      particles.burst(p.x, p.y, perBurst, key, power);
-    }
+    for (let i = 0; i < bursts; i++) { const p = randomPos(); particles.burst(p.x, p.y, perBurst, key, power); }
   }
-  /** コンボに応じた「+N」数字の色・サイズ */
   function gainStyle(cm) {
     if (cm >= 10) return { color: '#ff4f86', size: 42 };
     if (cm >= 6)  return { color: '#ff7a3c', size: 35 };
@@ -91,227 +42,163 @@
     return { color: '#d98326', size: 21 };
   }
 
-  let lastComboMult = 1;
-  let keyPop = 0;   // 高音/低音を交互に
+  // ── お題 ──────────────────────────────────────────
+  let current = null, currentWord = null;
+  function nextWord() {
+    currentWord = WordBank.random(3);
+    current = new TypingWord(currentWord.kana);
+    UI.setWord(currentWord.text);
+    UI.setProgress('', current.left);
+  }
 
-  // ── 入力ハンドラ ──────────────────────────────────
+  // ── 入力 ──────────────────────────────────────────
+  let lastComboMult = 1, keyPop = 0;
   function onChar(ch) {
     audio.unlock();
-    if (!current) return;
+    if (!game.running || !current) return;
     const r = current.press(ch);
-
     if (r.status === 'reject') {
       game.miss();
       UI.flashMiss();
       UI.showCombo(0, 1);
       lastComboMult = 1;
-      // ミスは焦げポップ＋鈍い音で軽くフィードバック
       const mp = randomPos();
       particles.burst(mp.x, mp.y, 2, 'charcoal', 0.7);
       audio.play('pop1', 0.55, 0.3);
       return;
     }
-
-    // 正解打鍵：1打鍵 = 1発の“花火”が画面のどこかで破裂！
     const gain = game.typeChar();
     UI.setProgress(r.done, r.left);
-    UI.bumpCorn();
+    UI.bumpPanel();
     const cm = game.comboMult;
     const pos = randomPos();
-    const n = Math.min(22, 5 + game.level + (cm - 1) * 2);   // コンボ・レベルで粒が増える
-    particles.burst(pos.x, pos.y, n, cornKey(), 1.1 + Math.min(1, cm * 0.08));
-    // 「+N」を表示（コンボが伸びるほど大きく派手に）
+    particles.burst(pos.x, pos.y, game.particlesPerKey, cornKey(), 1.1 + Math.min(1, cm * 0.04));
     const gs = gainStyle(cm);
     particles.addText(pos.x, pos.y - 6, '+' + FORMAT.fmt(gain), gs.color, gs.size);
-    // 全体で“大きいやつ”（金属ポンッ）を毎キー。高音/低音を交互に。
     keyPop ^= 1;
     audio.play('metal', keyPop ? 1.06 : 0.92, 0.6);
-
-    // コンボ更新（節目はさらに盛大に）
-    UI.showCombo(game.combo, cm);
+    UI.setScore(game.runScore);
+    UI.showCombo(game.combo, Math.round(cm * 10) / 10);
     if (cm > lastComboMult) {
       lastComboMult = cm;
       UI.pulseCombo();
       fireworksAcross(4, 8, cornKey(), 1.8);
-      audio.play('result', 1.1, 0.5);
-      UI.toast(`コンボ ×${cm}！`, { good: true });
+      audio.play('result', 1.1, 0.45);
     }
-
     if (r.status === 'complete') {
       game.completeWord(currentWord.kana.length);
       fireworksAcross(2, 7, cornKey(), 1.5);
-      checkUnlockHints();
       nextWord();
     }
   }
+  function onBackspace() { if (current && game.running) { const r = current.backspace(); UI.setProgress(r.done, r.left); } }
+  function onEnter() { if (game.running && current) nextWord(); }   // むずいお題はスキップ
 
-  function onBackspace() {
-    if (!current) return;
-    const r = current.backspace();
-    UI.setProgress(r.done, r.left);
+  attachKeyInput({ onChar, onBackspace, onEnter, isActive: () => game.running });
+
+  // ── 画面遷移 ──────────────────────────────────────
+  function gotoTitle() { UI.setTitleBest(Leaderboard.localBest()); UI.show('title'); }
+  function gotoShop() { UI.refreshShop(game); UI.show('shop'); }
+
+  let countdownTimer = null;
+  function startGameFlow() {
+    audio.unlock();
+    UI.show('play');
+    particles.resize();
+    UI.setScoreIcon(cornKey());
+    UI.setScore(0); UI.showCombo(0, 1); lastComboMult = 1;
+    UI.setTime(game.runSeconds, game.runSeconds);
+    nextWord();
+    // カウントダウン
+    let n = cfg.run.countdown;
+    UI.setCountdown(n);
+    audio.play('pop1', 1.2, 0.5);
+    clearInterval(countdownTimer);
+    countdownTimer = setInterval(() => {
+      n--;
+      if (n > 0) { UI.setCountdown(n); audio.play('pop1', 1.2, 0.5); }
+      else if (n === 0) { UI.setCountdown(0); audio.play('result', 1.2, 0.6); }
+      else { clearInterval(countdownTimer); UI.setCountdown(null); game.startRun(); }
+    }, 700);
   }
 
-  function onEnter() {
-    // むずかしいお題はEnterで次へ（コンボは維持。ボーナスなし）
-    audio.unlock();
-    if (current) nextWord();
+  let lastTs = 0, currentBoard = 'local';
+  async function finishRun(res) {
+    audio.play('result', 1, 0.8);
+    fireworksAcross(14, 9, 'gold', 2.4);
+    UI.showResult(res);
+    UI.show('result');
+    game.save();
+    // ランキング登録
+    let name = localStorage.getItem('popcorn-typing-name');
+    if (!name) {
+      name = (prompt('ランキングに のせる なまえは？（12文字まで）', '') || 'ぼうけんしゃ').slice(0, 12);
+      localStorage.setItem('popcorn-typing-name', name);
+    }
+    const r = await Leaderboard.submit(name, res.score, { wpm: res.wpm });
+    lastTs = r.entry.ts;
+    UI.setRankLine(r.localRank > 0 ? `自己ベスト ${r.localRank}位！` : 'ナイスプレイ！');
+    renderBoard(currentBoard);
   }
 
-  // 数字キーでキーボード完結（マウス不要）。押した手応え＝音＋ボタンが光る。
-  function onDigit(d) {
-    audio.unlock();
-    let ok = false;
-    if (d === '1') ok = handlers.buyVariety(game.varietyIndex + 1);
-    else if (d === '2') ok = handlers.levelUp();
-    else if (d === '3') {
-      const r = game.buyBestEquip();
-      if (r) {
-        ok = true;
-        audio.play('result', 1.3, 0.55);
-        fireworksAcross(4, 7, cornKey(), 2);
-        if (r.first) showEquipUnlock(r.index);
-      } else {
-        audio.play('pop1', 0.5, 0.3);
-        UI.toast('設備を買う粒が足りない…', {});
+  function renderBoard(which) {
+    currentBoard = which;
+    document.querySelectorAll('.rank-tab').forEach(b => b.classList.toggle('active', b.dataset.board === which));
+    if (which === 'local') {
+      UI.renderRankList(Leaderboard.localTop(), lastTs);
+    } else {
+      if (!Leaderboard.globalEnabled) {
+        UI.el.rankList.innerHTML = '<div class="rank-empty">世界ランキングは準備中だよ🌍<br>（サーバー設定でON）</div>';
+        return;
       }
-    }
-    UI.flashKeyHint(d, ok);
-  }
-
-  // ── 進行ヒント（品種解放など気づきを促す） ──────────
-  let hintedVariety = -1;
-  function checkUnlockHints() {
-    const nv = game.nextVariety;
-    if (nv && game.popcorn >= nv.cost && hintedVariety < game.varietyIndex) {
-      hintedVariety = game.varietyIndex;
-      UI.toast(`🌽「${nv.name}」が研究できる！ショップを見て`, { good: true });
+      UI.renderRankList(null);
+      Leaderboard.globalTop().then(g => { if (currentBoard === 'global') UI.renderRankList(g, lastTs); });
     }
   }
 
-  // ── 購入ハンドラ ──────────────────────────────────
-  const handlers = {
+  // ── ショップ操作 ──────────────────────────────────
+  const shopHandlers = {
     buyVariety(i) {
-      if (i !== game.varietyIndex + 1) { audio.play('pop1', 0.5, 0.3); return false; }
-      if (game.buyVariety()) {
-        UI.setCornSprite(cornKey());
-        UI.toast(`🌽 ${game.variety.name} を研究した！`, { good: true, big: true });
+      if (i === game.varietyIndex + 1 && game.buyVariety()) {
         audio.play('result', 1.2, 0.6);
-        fireworksAcross(6, 8, cornKey(), 2.2);
-        return true;
-      }
-      audio.play('pop1', 0.5, 0.3);
-      UI.toast(`研究に ${FORMAT.fmt(game.nextVariety ? game.nextVariety.cost : 0)} 粒 必要`, {});
-      return false;
+        UI.boughtFlash(UI.varietyCards[i].el);
+        UI.setScoreIcon(cornKey());
+        UI.refreshShop(game); game.save();
+      } else { audio.play('pop1', 0.5, 0.3); }
     },
-    buyEquip(i) {
-      const first = game.equip[i] === 0;
-      if (game.buyEquip(i)) {
-        audio.play('result', 1.3, 0.5);
-        if (first) showEquipUnlock(i);
-        return true;
-      }
-      return false;
+    buyArtifact(id) {
+      if (game.buyArtifact(id)) {
+        audio.play('result', 1.3, 0.55);
+        UI.boughtFlash(UI.artifactCards[id].el);
+        UI.refreshShop(game); game.save();
+      } else { audio.play('pop1', 0.5, 0.3); }
     },
-    levelUp() {
-      if (game.levelUp()) {
-        audio.play('result', 1.4, 0.65);
-        UI.bumpCorn();
-        UI.toast(`⭐ レベル ${game.level}！ はじける粒が増えた`, { good: true, big: true });
-        fireworksAcross(5, 8, cornKey(), 2);
-        return true;
-      }
-      audio.play('pop1', 0.5, 0.3);
-      UI.toast(`レベルアップに ${FORMAT.fmt(game.levelCost)} 粒 必要`, {});
-      return false;
-    },
-    prestige() {
-      const gain = game.saltGain;
-      if (!game.canPrestige) return;
-      if (!confirm(`お店を売却して転生します。\n塩を ${FORMAT.fmt(gain)} 個もらい、全生産が永続で強くなります。\nポップコーンと設備はリセットされます。よろしい？`)) return;
-      game.prestige();
-      audio.play('result', 1, 0.8);
-      UI.setCornSprite(cornKey());
-      UI.toast(`🧂 転生！ 塩 ${FORMAT.fmt(game.salt)} 個（全生産 ×${(game.globalMult).toFixed(1)}）`, { good: true, big: true });
-      // 黄金の大花火
-      fireworksAcross(10, 9, 'gold', 2.5);
-      hintedVariety = -1;
-      nextWord();
-      game.save();
-    },
-    hardReset() {
-      if (!confirm('セーブを消して最初から完全にやり直します。本当に？')) return;
-      game.hardReset();
-      UI.setCornSprite(cornKey());
-      hintedVariety = -1;
-      nextWord();
-      game.save();
-      UI.toast('🔄 最初からスタート！');
-    },
-    onDigit(d) { onDigit(d); },   // 数字キーヒントのクリック用
   };
+  UI.buildShop(game, shopHandlers);
 
-  // ── メインループ ──────────────────────────────────
+  // ── ボタン配線 ────────────────────────────────────
+  document.getElementById('to-play').addEventListener('click', startGameFlow);
+  document.getElementById('to-shop').addEventListener('click', gotoShop);
+  document.getElementById('shop-back').addEventListener('click', gotoTitle);
+  document.getElementById('shop-start').addEventListener('click', startGameFlow);
+  document.getElementById('result-shop').addEventListener('click', gotoShop);
+  document.getElementById('result-retry').addEventListener('click', startGameFlow);
+  document.querySelectorAll('.rank-tab').forEach(b => b.addEventListener('click', () => renderBoard(b.dataset.board)));
+
+  // ── ループ ────────────────────────────────────────
   let last = performance.now();
-  let acc = 0;        // UI更新の間引き
-  let puffTimer = 0;  // 設備からの自動ポップ間隔
-  let lastTotal = 0;  // 生成レート計測用
-  let genRate = 0;    // 平滑化した「いまの生成（粒/秒）」
   function loop(now) {
-    const dt = Math.min(0.1, (now - last) / 1000);
-    last = now;
-    game.tick(dt);
-    // 生成レート（手入力＋自動）を平滑化
-    const inst = dt > 0 ? (game.totalRun - lastTotal) / dt : 0;
-    lastTotal = game.totalRun;
-    genRate += (inst - genRate) * Math.min(1, dt * 5);
-    // 設備が動いてるのを見せる：CPSに応じて、設備の位置からぽんぽん弾ける（軽め・上限あり）
-    if (game.cps > 0) {
-      const rate = Math.min(7, 1 + Math.log10(game.cps + 1) * 2.2);
-      puffTimer -= dt;
-      if (puffTimer <= 0) { puffTimer = 1 / rate; emitAutoPuff(); }
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (game.running) {
+      const res = game.tickTime(dt);
+      UI.setTime(game.timeLeft, game.runSeconds);
+      if (res) finishRun(res);
     }
     particles.update(dt);
     particles.draw();
-    acc += dt;
-    if (acc >= 0.1) { acc = 0; UI.refresh(game); UI.setGen(genRate, 1e5); }  // 数値は10fpsで十分
     requestAnimationFrame(loop);
   }
 
-  // ── 起動 ──────────────────────────────────────────
-  function startGame() {
-    document.getElementById('title-screen').classList.add('hidden');
-    document.getElementById('game-screen').classList.remove('hidden');
-    particles.resize();
-
-    UI.setCornSprite(cornKey());
-    UI.buildShop(game, handlers);
-    UI.refresh(game);
-    lastTotal = game.totalRun;
-    nextWord();
-
-    // オフライン生産
-    const off = game.applyOffline();
-    if (off.gain > 1) {
-      const mins = Math.round(off.seconds / 60);
-      UI.toast(`🍿 留守の${mins >= 60 ? Math.round(mins/60)+'時間' : mins+'分'}で ${FORMAT.fmt(off.gain)} 粒 焼けてたよ！`, { good: true, big: true });
-    }
-
-    // 入力
-    attachKeyInput({ onChar, onBackspace, onEnter, onDigit, isActive: () => true });
-
-    // ミュート
-    document.getElementById('mute-btn').addEventListener('click', (e) => {
-      const muted = audio.toggleMute();
-      e.target.textContent = muted ? '🔇' : '🔊';
-    });
-
-    audio.unlock();
-    requestAnimationFrame(loop);
-
-    // オートセーブ
-    setInterval(() => game.save(), cfg.save.intervalMs);
-    window.addEventListener('beforeunload', () => game.save());
-  }
-
-  document.getElementById('start-btn').addEventListener('click', startGame);
+  gotoTitle();
+  requestAnimationFrame(loop);
 })();

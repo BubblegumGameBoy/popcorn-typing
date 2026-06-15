@@ -33,7 +33,8 @@ function fmt(n) {
   if (n >= 100) s = n.toFixed(0);
   else if (n >= 10) s = n.toFixed(1);
   else s = n.toFixed(2);
-  s = s.replace(/\.?0+$/, '');
+  // 小数点以下の末尾ゼロだけ削る（整数部のゼロは消さない）
+  if (s.indexOf('.') >= 0) s = s.replace(/\.?0+$/, '');
   return s + UNITS[t];
 }
 

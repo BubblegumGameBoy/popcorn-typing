@@ -1,237 +1,182 @@
 /*
  * ============================================================
- *  ゲーム状態・経済ロジック  (game.js)
+ *  ゲーム状態・経済ロジック  (game.js)  ― スコアアタック版
  * ============================================================
- *  数字（スコア）の真実はここ。描画・入力は持たない純粋ロジック。
- *  - 所持/総生産/品種/設備/塩 を保持
- *  - 派生値（1打鍵の粒・CPS・各種倍率）を計算
- *  - 購入・転生・セーブ/ロード・オフライン生産
+ *  - メタ進行（永続）: 貯金 / 解放した品種 / アーティファクトLv / 通算プレイ
+ *  - 1戦（揮発）: 残り時間 / 今回スコア / コンボ / 命中・打鍵数
+ *  描画・入力は持たない純粋ロジック。
  * ============================================================
  */
 
 class Game {
   constructor(config) {
     this.cfg = config;
-    this.reset(true);
+    // メタ（永続）
+    this.bank = 0;
+    this.varietyIndex = 0;
+    this.artifacts = {};                       // {id: level}
+    for (const a of config.artifacts) this.artifacts[a.id] = 0;
+    this.totalRuns = 0;
+    // 1戦
+    this._resetRun();
   }
 
-  /** newGame=true なら塩も含め完全初期化（最初の起動用） */
-  reset(newGame) {
-    this.popcorn = 0;             // 所持
-    this.totalRun = 0;            // この周回の総生産
-    this.varietyIndex = 0;        // 現在の品種（解放済みの最高位）
-    this.equip = this.cfg.equipment.map(() => 0);  // 各設備の所有数
-    this.level = 1;               // タイピングレベル（手入力の主軸）
-    this.combo = 0;               // 連続ノーミス
+  _resetRun() {
+    this.running = false;
+    this.timeLeft = this.runSeconds;
+    this.runScore = 0;
+    this.combo = 0;
     this.maxCombo = 0;
+    this.charsCorrect = 0;
+    this.missCount = 0;
     this.wordsCleared = 0;
-    if (newGame) {
-      this.salt = 0;              // 転生通貨（永続）
-      this.totalAllTime = 0;      // 全周回の総生産（塩算出のもと）
-      this.prestiges = 0;
-    }
-    this.lastSeen = Date.now();
   }
 
   // ── 派生値 ──────────────────────────────────────────
   get variety() { return this.cfg.varieties[this.varietyIndex]; }
+  artLevel(id) { return this.artifacts[id] || 0; }
+  _artDef(id) { return this.cfg.artifacts.find(a => a.id === id); }
 
-  /** 塩による全生産倍率（フェーズA） */
-  get globalMult() { return 1 + this.salt * this.cfg.prestige.saltMult; }
+  /** kind 別の合計を計算 */
+  _sumKind(kind) {
+    let s = 0;
+    for (const a of this.cfg.artifacts) if (a.kind === kind) s += a.perLevel * this.artLevel(a.id);
+    return s;
+  }
 
-  /** 現在のコンボ倍率 */
+  get runSeconds() { return this.cfg.run.baseSeconds + this._sumKind('time'); }
+
+  /** 1打鍵の基礎（品種 + flat系） */
+  get base() { return this.variety.perChar + this._sumKind('flat'); }
+
+  /** コンボ表の倍率 × combo系アーティファクト */
   get comboMult() {
     let m = 1;
     for (const tier of this.cfg.combo) if (this.combo >= tier.threshold) m = tier.mult;
-    return m;
+    return m * (1 + this._sumKind('combo'));
   }
 
-  /** 1打鍵の基礎（品種 × レベル × 塩）。コンボ前。 */
-  get baseOutput() {
-    return this.variety.perChar * this.level * this.globalMult;
+  /** 全獲得倍率（mult系アーティファクトの積） */
+  get globalMult() {
+    let g = 1;
+    for (const a of this.cfg.artifacts) if (a.kind === 'mult') g *= (1 + a.perLevel * this.artLevel(a.id));
+    return g;
   }
 
-  /** 1打鍵の獲得粒（コンボこみ） */
-  get perChar() {
-    return this.baseOutput * this.comboMult;
-  }
+  /** 1打鍵の獲得粒 */
+  get perChar() { return this.base * this.comboMult * this.globalMult; }
 
-  /** 1打鍵で飛ばす粒の数（レベルに比例、上限あり） */
+  /** 花火の粒数（コンボで増える・上限あり） */
   get particlesPerKey() {
-    const L = this.cfg.level;
-    return Math.max(1, Math.min(L.particleCap, this.level * L.particlePerLevel));
+    return Math.min(22, this.cfg.fx.keyBurstBase + Math.round((this.comboMult - 1) * 1.5));
   }
 
-  /** 次のレベルアップ費用 */
-  get levelCost() {
-    const L = this.cfg.level;
-    return Math.floor(L.costBase * Math.pow(L.costGrowth, this.level - 1));
-  }
-  get canLevelUp() { return this.popcorn >= this.levelCost; }
-  levelUp() {
-    if (!this.canLevelUp) return false;
-    this.popcorn -= this.levelCost;
-    this.level++;
-    return true;
-  }
-
-  /** 毎秒の自動生産（CPS、塩こみ） */
-  get cps() {
-    let c = 0;
-    for (let i = 0; i < this.equip.length; i++) c += this.equip[i] * this.cfg.equipment[i].cps;
-    return c * this.globalMult;
-  }
-
-  /** 設備 i の現在価格（所有数で上昇） */
-  equipCost(i) {
-    return Math.floor(this.cfg.equipment[i].cost * Math.pow(this.cfg.equipmentGrowth, this.equip[i]));
-  }
-
-  /** 次の品種（あれば） */
-  get nextVariety() {
-    return this.varietyIndex < this.cfg.varieties.length - 1
-      ? this.cfg.varieties[this.varietyIndex + 1] : null;
-  }
-
-  // ── 加算 ────────────────────────────────────────────
-  _earn(amount) {
-    this.popcorn += amount;
-    this.totalRun += amount;
-    this.totalAllTime += amount;
+  // ── 1戦の進行 ──────────────────────────────────────
+  startRun() {
+    this._resetRun();
+    this.timeLeft = this.runSeconds;
+    this.running = true;
   }
 
   /** 1文字正解。獲得粒を返す。 */
   typeChar() {
+    if (!this.running) return 0;
     this.combo++;
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
     const gain = this.perChar;
-    this._earn(gain);
+    this.runScore += gain;
+    this.charsCorrect++;
     return gain;
   }
 
-  /** ミス。コンボリセット。 */
-  miss() { this.combo = 0; }
+  miss() { if (this.running) { this.combo = 0; this.missCount++; } }
 
-  /** 1ワード完成ボーナス。獲得粒を返す。 */
+  /** ワード完成。ちょいボーナス。 */
   completeWord(charCount) {
+    if (!this.running) return 0;
     this.wordsCleared++;
-    const bonus = charCount * this.baseOutput * this.cfg.wordBonusMult * this.comboMult;
-    this._earn(bonus);
+    const bonus = this.base * this.comboMult * this.globalMult * 2;   // 2打鍵ぶんの軽ボーナス
+    this.runScore += bonus;
     return bonus;
   }
 
-  /** 自動生産を dt 秒ぶん加算 */
-  tick(dt) {
-    const g = this.cps * dt;
-    if (g > 0) this._earn(g);
-    return g;
+  /** 時間を進める。0になったら自動で終了し、結果を返す（まだなら null）。 */
+  tickTime(dt) {
+    if (!this.running) return null;
+    this.timeLeft -= dt;
+    if (this.timeLeft <= 0) { this.timeLeft = 0; return this.endRun(); }
+    return null;
   }
 
-  // ── 購入 ────────────────────────────────────────────
+  /** 1戦終了。貯金に加算し、結果オブジェクトを返す。 */
+  endRun() {
+    this.running = false;
+    const score = Math.floor(this.runScore);
+    this.bank += score;
+    this.totalRuns++;
+    const secs = this.runSeconds;
+    const wpm = Math.round((this.charsCorrect / 5) / (secs / 60));
+    const total = this.charsCorrect + this.missCount;
+    const acc = total > 0 ? Math.round((this.charsCorrect / total) * 100) : 100;
+    return { score, wpm, acc, maxCombo: this.maxCombo, words: this.wordsCleared, chars: this.charsCorrect };
+  }
+
+  // ── ショップ（貯金で買う） ──────────────────────────
+  get nextVariety() {
+    return this.varietyIndex < this.cfg.varieties.length - 1
+      ? this.cfg.varieties[this.varietyIndex + 1] : null;
+  }
   buyVariety() {
     const nv = this.nextVariety;
-    if (!nv || this.popcorn < nv.cost) return false;
-    this.popcorn -= nv.cost;
+    if (!nv || this.bank < nv.cost) return false;
+    this.bank -= nv.cost;
     this.varietyIndex++;
     return true;
   }
 
-  buyEquip(i) {
-    const cost = this.equipCost(i);
-    if (this.popcorn < cost) return false;
-    this.popcorn -= cost;
-    this.equip[i]++;
+  artifactCost(id) {
+    const a = this._artDef(id);
+    return Math.floor(a.costBase * Math.pow(a.costGrowth, this.artLevel(id)));
+  }
+  artifactMaxed(id) { return this.artLevel(id) >= this._artDef(id).max; }
+  buyArtifact(id) {
+    if (this.artifactMaxed(id)) return false;
+    const cost = this.artifactCost(id);
+    if (this.bank < cost) return false;
+    this.bank -= cost;
+    this.artifacts[id] = this.artLevel(id) + 1;
     return true;
-  }
-
-  /** キーボード用：買える中で最も進んだ設備を1つ買う。買えたら index を返す。 */
-  buyBestEquip() {
-    for (let i = this.cfg.equipment.length - 1; i >= 0; i--) {
-      if (this.popcorn >= this.equipCost(i)) { const first = this.equip[i] === 0; this.buyEquip(i); return { index: i, first }; }
-    }
-    return null;
-  }
-
-  // ── 転生（プレステージ） ────────────────────────────
-  /** 今転生したら得られる塩の総数（累計ベース） */
-  get potentialSalt() {
-    return Math.floor(Math.sqrt(this.totalAllTime / this.cfg.prestige.base));
-  }
-  /** 今回の転生で増える塩 */
-  get saltGain() {
-    return Math.max(0, this.potentialSalt - this.salt);
-  }
-  get canPrestige() {
-    return this.saltGain >= this.cfg.prestige.minSalt;
-  }
-  prestige() {
-    if (!this.canPrestige) return false;
-    this.salt = this.potentialSalt;
-    this.prestiges++;
-    // 周回リセット（塩・累計・転生回数は維持）
-    this.reset(false);
-    return true;
-  }
-
-  // ── オフライン生産 ──────────────────────────────────
-  /** ロード時に呼ぶ。留守中の生産を加算し、得た粒を返す。 */
-  applyOffline() {
-    const now = Date.now();
-    const elapsed = Math.max(0, (now - this.lastSeen) / 1000);
-    this.lastSeen = now;
-    const cap = this.cfg.offline.capHours * 3600;
-    const sec = Math.min(elapsed, cap);
-    const gain = this.cps * this.cfg.offline.rate * sec;
-    if (gain > 0) this._earn(gain);
-    return { gain, seconds: sec, capped: elapsed > cap };
   }
 
   // ── セーブ / ロード ────────────────────────────────
   serialize() {
     return JSON.stringify({
-      v: 1,
-      popcorn: this.popcorn, totalRun: this.totalRun, totalAllTime: this.totalAllTime,
-      varietyIndex: this.varietyIndex, equip: this.equip, level: this.level,
-      salt: this.salt, prestiges: this.prestiges,
-      maxCombo: this.maxCombo, wordsCleared: this.wordsCleared,
-      lastSeen: Date.now(),
+      v: 2, bank: this.bank, varietyIndex: this.varietyIndex,
+      artifacts: this.artifacts, totalRuns: this.totalRuns,
     });
   }
-
   load(json) {
     try {
       const d = JSON.parse(json);
-      this.popcorn = d.popcorn || 0;
-      this.totalRun = d.totalRun || 0;
-      this.totalAllTime = d.totalAllTime || 0;
+      this.bank = d.bank || 0;
       this.varietyIndex = Math.min(d.varietyIndex || 0, this.cfg.varieties.length - 1);
-      this.equip = (d.equip && d.equip.length === this.cfg.equipment.length)
-        ? d.equip.slice() : this.cfg.equipment.map(() => 0);
-      this.level = d.level || 1;
-      this.salt = d.salt || 0;
-      this.prestiges = d.prestiges || 0;
-      this.maxCombo = d.maxCombo || 0;
-      this.wordsCleared = d.wordsCleared || 0;
-      this.lastSeen = d.lastSeen || Date.now();
-      this.combo = 0;
+      if (d.artifacts) for (const a of this.cfg.artifacts) this.artifacts[a.id] = d.artifacts[a.id] || 0;
+      this.totalRuns = d.totalRuns || 0;
       return true;
     } catch (e) { return false; }
   }
-
-  save() {
-    try { localStorage.setItem(this.cfg.save.key, this.serialize()); } catch (e) {}
-  }
+  save() { try { localStorage.setItem(this.cfg.save.key, this.serialize()); } catch (e) {} }
   static loadFrom(config) {
     const g = new Game(config);
-    try {
-      const raw = localStorage.getItem(config.save.key);
-      if (raw) g.load(raw);
-    } catch (e) {}
+    try { const raw = localStorage.getItem(config.save.key); if (raw) g.load(raw); } catch (e) {}
+    g._resetRun();
     return g;
   }
   hardReset() {
     try { localStorage.removeItem(this.cfg.save.key); } catch (e) {}
-    this.reset(true);
+    this.bank = 0; this.varietyIndex = 0; this.totalRuns = 0;
+    for (const a of this.cfg.artifacts) this.artifacts[a.id] = 0;
+    this._resetRun();
   }
 }
 

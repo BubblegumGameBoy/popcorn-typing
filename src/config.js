@@ -1,60 +1,49 @@
 /*
  * ============================================================
- *  ゲームバランス設定  (config.js)
+ *  ゲームバランス設定  (config.js)  ― スコアアタック版
  * ============================================================
- *  数値はすべてここに集約。チューニングはこのファイルだけで完結。
+ *  ■ 新ループ
+ *    60秒タイムアタックで「今回スコア（＝稼いだポップコーン）」を競う。
+ *    稼いだポップコーンは全部「貯金」に貯まり、ショップで永久強化を買う。
+ *    品種・アーティファクトは次戦以降ずっと有効 → やるほどスコアが伸びる。
  *
- *  ■ 設計思想（バランスの背骨）
- *    - 序盤: 自力タイピングで稼ぐ（1打鍵 1〜数粒）。設備は「鍋」から。
- *    - 中盤: 品種研究で1打鍵が ×5→×50→×1000 とインフレ。
- *            設備も並行で増やし、CPS（毎秒生産）が主役に。
- *    - 終盤: ポップコーンワールド等でCPS爆発 → 数兆粒 → 転生。
- *    - 転生: 塩を獲得し、全生産に永続倍率。次周回が加速。
- *
- *    コスト成長率 1.15（クリッカー定番）で「買うほど次が重い」。
- *    各設備の価格帯は約10倍ずつ離し、常に「次の目標」が見える。
+ *  ■ スコア計算（1打鍵）
+ *    base   = 品種perChar + Σ(flat系アーティファクト)
+ *    comboM = コンボ表の倍率 × (1 + cinema係数)
+ *    globalM= Π(×系アーティファクト)
+ *    1打鍵 = base × comboM × globalM
+ *    制限時間 = 60 + microwave延長
  * ============================================================
  */
 
 const CONFIG = {
 
-  // ── 品種（自力タイピングの1打鍵あたり） ──────────────
-  //   highest unlocked が「現在の品種」。打鍵スプライトも切り替わる。
-  //   ※ インフレを抑えめに（数字より見た目重視）。レベルでも伸びる。
-  varieties: [
-    { id: 'normal',  name: '普通のコーン',     img: 'normal',  perChar: 1,  cost: 0,      desc: '1文字 = 1粒。すべての始まり。' },
-    { id: 'caramel', name: 'キャラメルコーン', img: 'caramel', perChar: 3,  cost: 300,    desc: '1文字 = 3粒。あまくてカリッ。' },
-    { id: 'truffle', name: 'トリュフ塩コーン', img: 'truffle', perChar: 10, cost: 6000,   desc: '1文字 = 10粒。高級な香り。' },
-    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 30, cost: 80000,  desc: '1文字 = 30粒。食べられるのか…？' },
-  ],
-
-  // ── レベル（タイピングで上げる。手入力がいちばん強い源泉） ──
-  //   レベルが上がるほど 1打鍵の粒が増え、はじける粒の数も増える（Lv2=2個）。
-  level: {
-    base: 1,          // 1打鍵 = variety.perChar × level × combo × salt
-    costBase: 60,     // Lv2 にするコスト
-    costGrowth: 1.55, // レベルごとのコスト上昇
-    particlePerLevel: 1,   // レベル1につき はじける粒 +1
-    particleCap: 14,       // 1打鍵で飛ぶ粒の上限（描画保護）
+  run: {
+    baseSeconds: 60,         // 1戦の基本秒数（アーティファクトで延長）
+    countdown: 3,            // スタート前カウントダウン
   },
 
-  // ── 設備（自動生産・あくまで“軽い味付け”） ──────────────
-  //   ★手入力が最強★ なので cps は控えめ（数秒に数粒〜）。
-  //   見た目（画面に置かれて、ぽんぽん弾ける）で楽しませるのが主目的。
-  //   tier でステージ上のグループ分け（序盤/中盤/終盤）。
-  equipment: [
-    { id: 'pan',        name: 'フライパン',             img: 'pan',        cost: 60,       cps: 0.3,  tier: 0, desc: '鍋ひとつ。ぽつ…ぽつ…と弾ける。' },
-    { id: 'panGrandma', name: 'フライパン＋おばあちゃん', img: 'panGrandma', cost: 400,      cps: 1,    tier: 0, desc: 'おばあちゃん参戦。買うほど人数が増える。' },
-    { id: 'microwave',  name: '電子レンジ',             img: 'microwave',  cost: 3000,     cps: 3,    tier: 1, desc: 'チンッ！で焼ける。' },
-    { id: 'cinema',     name: '映画館の業務用マシン',     img: 'cinema',     cost: 24000,    cps: 9,    tier: 1, desc: '映画のお供を生産。' },
-    { id: 'ponkashi',   name: '屋台のポン菓子機',         img: 'ponkashi',   cost: 180000,   cps: 26,   tier: 1, desc: 'ボンッ！と弾ける。' },
-    { id: 'factory',    name: '巨大ポップコーン工場',     img: 'factory',    cost: 1500000,  cps: 75,   tier: 2, desc: 'ラインで生産。' },
-    { id: 'world',      name: 'ポップコーンワールド',     img: 'world',      cost: 12000000, cps: 220,  tier: 2, desc: '中央に浮かぶ黄金の島。ガンガン自動生成。' },
+  // ── 品種（1打鍵の基礎粒・永久アンロック） ──────────────
+  varieties: [
+    { id: 'normal',  name: '普通のコーン',     img: 'normal',  perChar: 1,   cost: 0,      desc: '1打鍵 = 1粒。すべての始まり。' },
+    { id: 'caramel', name: 'キャラメルコーン', img: 'caramel', perChar: 5,   cost: 3000,   desc: '1打鍵 = 5粒。あまくてカリッ。' },
+    { id: 'truffle', name: 'トリュフ塩コーン', img: 'truffle', perChar: 25,  cost: 35000,  desc: '1打鍵 = 25粒。高級な香り。' },
+    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 100, cost: 300000, desc: '1打鍵 = 100粒。食べられるのか…？' },
   ],
-  equipmentGrowth: 1.18,   // 1台買うごとの価格上昇率
 
-  // ── コンボ（連続ノーミス打鍵の倍率） ────────────────
-  //   threshold 文字以上の連続正解で mult 倍。ミスで 0 にリセット。
+  // ── アーティファクト（設備の絵を再利用した永久パッシブ強化） ──
+  //   kind: 'mult'(全獲得×) / 'flat'(基礎+) / 'combo'(コンボ倍率×) / 'time'(制限時間+秒)
+  //   効果 = perLevel × Lv。cost = costBase × costGrowth^Lv。
+  artifacts: [
+    { id: 'salt',       name: '伝説の魔法の塩',   img: 'salt',       kind: 'mult',  perLevel: 0.30, costBase: 2000,   costGrowth: 2.0, max: 50, desc: '全獲得が Lvごとに +30%。' },
+    { id: 'panGrandma', name: '黄金のフライパン', img: 'panGrandma', kind: 'flat',  perLevel: 3,    costBase: 1500,   costGrowth: 1.9, max: 50, desc: '1打鍵の基礎が Lvごとに +3。' },
+    { id: 'microwave',  name: 'タイマーのおまもり', img: 'microwave',  kind: 'time',  perLevel: 3,    costBase: 6000,   costGrowth: 2.6, max: 15, desc: '制限時間が Lvごとに +3秒。' },
+    { id: 'cinema',     name: 'スターのかがやき',  img: 'cinema',     kind: 'combo', perLevel: 0.15, costBase: 4000,   costGrowth: 2.2, max: 40, desc: 'コンボ倍率が Lvごとに +15%。' },
+    { id: 'factory',    name: '大量生産ライン',    img: 'factory',    kind: 'mult',  perLevel: 0.25, costBase: 9000,   costGrowth: 2.3, max: 50, desc: '全獲得が Lvごとに +25%。' },
+    { id: 'world',      name: '黄金時代',         img: 'world',      kind: 'mult',  perLevel: 1.0,  costBase: 250000, costGrowth: 3.0, max: 30, desc: '全獲得が Lvごとに +100%。終盤の大目玉。' },
+  ],
+
+  // ── コンボ（連続ノーミス打鍵の倍率。1戦中のみ・ミスで0） ──
   combo: [
     { threshold: 0,   mult: 1 },
     { threshold: 10,  mult: 2 },
@@ -64,35 +53,21 @@ const CONFIG = {
     { threshold: 200, mult: 10 },
   ],
 
-  // ── ワード完成ボーナス ──────────────────────────────
-  //   1ワード打ち切ると、文字数 × 基礎粒 × wordBonusMult の臨時ボーナス＋大破裂。
-  wordBonusMult: 3,
-
-  // ── 転生（プレステージ・フェーズA：塩の永続倍率） ──────
-  prestige: {
-    base: 1e5,        // この粒数で塩1個（sqrt曲線）。インフレ抑えめに合わせて下げた。
-    saltMult: 0.10,   // 塩1個につき全生産 +10%
-    minSalt: 1,       // 転生に必要な最低獲得塩
-  },
-
-  // ── オフライン生産 ──────────────────────────────────
-  offline: {
-    rate: 0.5,            // 留守中は通常CPSの50%
-    capHours: 8,          // 最大8時間ぶんまで
-  },
-
-  // ── 演出・描画 ──────────────────────────────────────
+  // ── 演出 ──────────────────────────────────────────
   fx: {
-    maxParticles: 180,    // 画面に同時表示する粒の上限（オブジェクトプール）
-    typePop: 2,           // 1打鍵で飛ばす粒数
-    wordBurst: 18,        // ワード完成時の破裂粒数
-    comboBurst: 24,       // コンボ更新時の破裂粒数
+    maxParticles: 200,
+    keyBurstBase: 5,     // 1打鍵の花火の粒数の基礎
+  },
+
+  // ── ランキング ────────────────────────────────────
+  ranking: {
+    localKey: 'popcorn-typing-scores-v2',
+    keep: 10,            // 端末内に残す上位件数
   },
 
   // ── セーブ ──────────────────────────────────────────
   save: {
-    key: 'popcorn-typing-save-v1',
-    intervalMs: 5000,     // オートセーブ間隔
+    key: 'popcorn-typing-save-v2',
   },
 };
 
