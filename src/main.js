@@ -56,6 +56,7 @@
     return { color: '#d98326', size: 21 };
   }
   // 所有している施設の画面位置（ここからポップコーンが落ちてくる）
+  // 施設はHUD（白バー）内にあるので、落下はステージ上端から始める
   function facilityPositions() {
     const cr = canvas.getBoundingClientRect();
     const list = [];
@@ -63,7 +64,7 @@
       if (game.equip[i] <= 0) continue;
       const r = UI.facElems[i].el.getBoundingClientRect();
       if (r.width < 2) continue;
-      list.push({ x: r.left + r.width / 2 - cr.left, y: r.bottom - cr.top });
+      list.push({ x: r.left + r.width / 2 - cr.left, y: Math.max(4, r.bottom - cr.top) });
     }
     return list;
   }
@@ -77,7 +78,7 @@
     const f = UI.facElems[i]; if (!f) return;
     const cr = canvas.getBoundingClientRect();
     const r = f.el.getBoundingClientRect();
-    particles.drop(r.left + r.width / 2 - cr.left, r.bottom - cr.top, n, cornKey());
+    particles.drop(r.left + r.width / 2 - cr.left, Math.max(4, r.bottom - cr.top), n, cornKey());
   }
 
   // ── フェーズ（背景＆BGM切替） ──────────────────────
