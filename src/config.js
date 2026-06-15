@@ -94,12 +94,22 @@ const CONFIG = {
   containerGrowthBeyond: 8,   // 終端超えで cap を ×8 ずつ
   containerRewardRate: 0.5,   // クリア報酬 = cap × これ（粒）
 
-  // ── 転生（プレステージ・フェーズA：塩の永続倍率） ──────
-  prestige: {
-    base: 1e5,        // この粒数で塩1個（sqrt曲線）。インフレ抑えめに合わせて下げた。
-    saltMult: 0.10,   // 塩1個につき全生産 +10%
-    minSalt: 1,       // 転生に必要な最低獲得塩
+  // ── 自動購入（クリック不要・もってる粒で高い設備から強化） ──
+  autoBuy: {
+    intervalMs: 200,    // 自動購入の間隔
+    // レベルアップ用に levelCost ぶんは残す（プレイヤーが2キーで上げられるように）
   },
+
+  // ── チートモード（クリア後に解放：全生産 ×100 で遊べる） ──
+  cheat: { mult: 100 },
+
+  // ── フェーズ（容器の進み具合で背景＆BGMを切り替え） ──────
+  //   container index が until 未満ならそのフェーズ。
+  phases: [
+    { until: 5,        bg: 'park',  bgm: 'bgmEarly', space: false },
+    { until: 11,       bg: 'town',  bgm: 'bgmMid',   space: false },
+    { until: Infinity, bg: 'space', bgm: 'bgmSpace', space: true  },
+  ],
 
   // ── オフライン生産 ──────────────────────────────────
   offline: {

@@ -36,8 +36,10 @@ const IMAGES = {
   // 転生通貨
   salt: 'artifacts/塩.png',
 
-  // 背景
-  park: 'background/遊園地.png',
+  // 背景（フェーズで切り替え）
+  park:  'background/遊園地.png',
+  town:  'background/ポップコーンタウン.png',
+  space: 'background/ポップコーンワールド.png',
 };
 
 const AUDIO = {
@@ -45,7 +47,10 @@ const AUDIO = {
   pop2:     'audio/se/ポンッ！_2.mp3',
   popMetal: 'audio/se/ポンッ！金属音っぽい音.mp3',
   result:   'audio/se/結果発表.mp3',
-  bgm:      'audio/bgm/popでかわいいダンス曲.mp3',
+  // BGM（フェーズで切り替え）。Poppin'_Heart はボーカル有りなので終盤に。
+  bgmEarly: 'audio/bgm/popでかわいいダンス曲.mp3',
+  bgmMid:   'audio/bgm/Funky_droll_street.mp3',
+  bgmSpace: "audio/bgm/Poppin'_Heart.mp3",
 };
 
 /** 画像URL（encodeURI 済み）を返す */

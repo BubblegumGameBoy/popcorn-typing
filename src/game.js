@@ -26,10 +26,10 @@ class Game {
     this.maxCombo = 0;
     this.wordsCleared = 0;
     if (newGame) {
-      this.salt = 0;              // 転生通貨（永続）
-      this.totalAllTime = 0;      // 全周回の総生産（塩算出のもと＝容器の進捗）
-      this.prestiges = 0;
-      this.containersCleared = 0; // 満タンにした容器の数（永続）
+      this.totalAllTime = 0;      // 全生産（＝容器の進捗。リセットされない）
+      this.containersCleared = 0; // 満タンにした容器の数
+      this.cheatUnlocked = false; // クリアで解放
+      this.cheatActive = false;   // チート（×100）で遊んでいるか
     }
     this.lastSeen = Date.now();
   }
@@ -37,8 +37,8 @@ class Game {
   // ── 派生値 ──────────────────────────────────────────
   get variety() { return this.cfg.varieties[this.varietyIndex]; }
 
-  /** 塩による全生産倍率（フェーズA） */
-  get globalMult() { return 1 + this.salt * this.cfg.prestige.saltMult; }
+  /** 全生産倍率（チートモードなら ×100） */
+  get globalMult() { return this.cheatActive ? this.cfg.cheat.mult : 1; }
 
   /** 現在のコンボ倍率 */
   get comboMult() {
@@ -153,6 +153,45 @@ class Game {
     return null;
   }
 
+  /** 自動購入：レベルアップ用に levelCost を残し、余りで品種→高い設備の順に強化。
+      新規に設置した設備の index 配列を返す（演出用）。 */
+  autoBuy() {
+    const reserve = this.levelCost;
+    const newlyPlaced = [];
+    let guard = 0;
+    // 品種（解放できるなら、予約を残して）
+    while (this.nextVariety && (this.popcorn - this.nextVariety.cost) >= reserve && guard++ < 50) {
+      this.buyVariety();
+    }
+    // 設備：高い順に、予約を残して買えるだけ
+    while (guard++ < 500) {
+      let best = -1;
+      for (let i = this.cfg.equipment.length - 1; i >= 0; i--) {
+        if ((this.popcorn - this.equipCost(i)) >= reserve) { best = i; break; }
+      }
+      if (best < 0) break;
+      const first = this.equip[best] === 0;
+      this.buyEquip(best);
+      if (first) newlyPlaced.push(best);
+    }
+    return newlyPlaced;
+  }
+
+  // ── フェーズ＆クリア ────────────────────────────────
+  get phase() {
+    const idx = this.containerState().index;
+    for (const p of this.cfg.phases) if (idx < p.until) return p;
+    return this.cfg.phases[this.cfg.phases.length - 1];
+  }
+  get isGameCleared() { return this.containersCleared >= this.cfg.containers.length; }
+
+  /** チートモードで最初から（全リセットして ×100 で再挑戦） */
+  startCheatRun() {
+    this.reset(true);
+    this.cheatUnlocked = true;
+    this.cheatActive = true;
+  }
+
   // ── 容器（目的：満タンにする） ──────────────────────
   //   進捗は totalAllTime（全生産）に紐づく単調増加。リセットされない。
   _containerCap(i) {
@@ -194,27 +233,6 @@ class Game {
     return out;
   }
 
-  // ── 転生（プレステージ） ────────────────────────────
-  /** 今転生したら得られる塩の総数（累計ベース） */
-  get potentialSalt() {
-    return Math.floor(Math.sqrt(this.totalAllTime / this.cfg.prestige.base));
-  }
-  /** 今回の転生で増える塩 */
-  get saltGain() {
-    return Math.max(0, this.potentialSalt - this.salt);
-  }
-  get canPrestige() {
-    return this.saltGain >= this.cfg.prestige.minSalt;
-  }
-  prestige() {
-    if (!this.canPrestige) return false;
-    this.salt = this.potentialSalt;
-    this.prestiges++;
-    // 周回リセット（塩・累計・転生回数は維持）
-    this.reset(false);
-    return true;
-  }
-
   // ── オフライン生産 ──────────────────────────────────
   /** ロード時に呼ぶ。留守中の生産を加算し、得た粒を返す。 */
   applyOffline() {
@@ -234,7 +252,8 @@ class Game {
       v: 1,
       popcorn: this.popcorn, totalRun: this.totalRun, totalAllTime: this.totalAllTime,
       varietyIndex: this.varietyIndex, equip: this.equip, level: this.level,
-      salt: this.salt, prestiges: this.prestiges, containersCleared: this.containersCleared,
+      containersCleared: this.containersCleared,
+      cheatUnlocked: this.cheatUnlocked, cheatActive: this.cheatActive,
       maxCombo: this.maxCombo, wordsCleared: this.wordsCleared,
       lastSeen: Date.now(),
     });
@@ -250,9 +269,9 @@ class Game {
       this.equip = (d.equip && d.equip.length === this.cfg.equipment.length)
         ? d.equip.slice() : this.cfg.equipment.map(() => 0);
       this.level = d.level || 1;
-      this.salt = d.salt || 0;
-      this.prestiges = d.prestiges || 0;
       this.containersCleared = d.containersCleared || 0;
+      this.cheatUnlocked = !!d.cheatUnlocked;
+      this.cheatActive = !!d.cheatActive;
       this.maxCombo = d.maxCombo || 0;
       this.wordsCleared = d.wordsCleared || 0;
       this.lastSeen = d.lastSeen || Date.now();

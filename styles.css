@@ -76,8 +76,7 @@ html, body {
 #game-screen {
   display: grid;
   grid-template-rows: auto 1fr;
-  grid-template-columns: 1fr 340px;
-  grid-template-areas: "hud hud" "stage shop";
+  grid-template-areas: "hud" "stage";
   gap: 14px; padding: 14px;
 }
 
@@ -381,3 +380,85 @@ body.space-mode #bg-overlay {
   #typing-panel { min-width: auto; width: 90%; }
   .game-title { font-size: 42px; }
 }
+
+/* ============================================================
+   v2: 施設ストリップ / レベルUP / 通知移動 / チートモード
+   ============================================================ */
+
+/* 施設ストリップ（HUD中央。自動で増える設備が見える） */
+#facility-strip {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: 8px; flex-wrap: wrap; max-width: 60%; margin: 0 12px;
+}
+.fac {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  width: 58px; padding: 3px 2px 2px; cursor: pointer;
+  background: rgba(255,255,255,.5); border: 2px solid transparent; border-radius: 10px;
+  animation: fac-in .35s cubic-bezier(.2,1.5,.4,1);
+}
+.fac img { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(80,50,10,.3)); border-radius: 8px; }
+.fac .fac-n {
+  position: absolute; right: 0; top: 0;
+  background: var(--pop-red); color: #fff; font-weight: 800; font-size: 10px;
+  padding: 0 5px; border-radius: 999px; border: 1px solid #fff;
+}
+.fac .fac-cost { font-size: 10px; font-weight: 800; color: var(--ink-soft); margin-top: 1px; }
+.fac:not(.owned) { opacity: .6; }
+.fac.affordable { border-color: var(--butter); background: #fff; opacity: 1; }
+.fac.affordable .fac-cost { color: var(--caramel); }
+.fac.bump { animation: fac-bump .3s; }
+@keyframes fac-in { from{transform:scale(.3) translateY(-10px);opacity:0;} to{transform:scale(1);opacity:1;} }
+@keyframes fac-bump { 0%{transform:scale(1);} 45%{transform:scale(1.25);} 100%{transform:scale(1);} }
+
+/* チートバッジ */
+#cheat-badge {
+  background: linear-gradient(180deg,#7b5cff,#5a3bbf); color:#fff; font-weight:900;
+  padding: 4px 12px; border-radius: 999px; font-size: 15px; border: 2px solid #fff;
+}
+
+/* レベルUPボタン（中央と重ならないよう左上に固定） */
+.levelup-btn {
+  position: absolute; top: 14px; left: 14px; z-index: 4;
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  background: var(--panel); border: 3px solid #fff; border-radius: 14px;
+  padding: 8px 14px; box-shadow: var(--shadow); font-weight: 800; color: var(--ink);
+}
+.levelup-btn kbd {
+  background: var(--ink); color: #fff; border-radius: 8px; padding: 2px 9px;
+  font-size: 15px; font-family: inherit; box-shadow: 0 2px 0 rgba(0,0,0,.3);
+}
+.levelup-btn .lu-cost { font-size: 13px; color: var(--caramel); }
+.levelup-btn.affordable { border-color: var(--butter); box-shadow: 0 0 0 3px var(--butter), var(--shadow); }
+.levelup-btn.affordable kbd { background: var(--pop-red); animation: kbd-glow 1s infinite; }
+@keyframes kbd-glow { 0%,100%{box-shadow:0 2px 0 rgba(0,0,0,.3);} 50%{box-shadow:0 2px 0 rgba(0,0,0,.3),0 0 10px var(--pop-red);} }
+.levelup-btn.pressed { animation: kh-press .42s cubic-bezier(.2,1.4,.4,1); }
+@keyframes kh-press { 0%{transform:scale(1);} 40%{transform:scale(1.12);} 100%{transform:scale(1);} }
+
+/* 通知トーストを右上へ（中央のタイピングと重ならない） */
+#toast-area {
+  bottom: auto; top: 70px; right: 16px; left: auto; transform: none;
+  align-items: flex-end;
+}
+
+/* サブボタン（チートモーダル用） */
+.sub-btn {
+  font-size: 15px; font-weight: 800; color: var(--caramel); cursor: pointer;
+  background: #fff; border: 3px solid var(--butter); padding: 12px 22px; border-radius: 999px;
+}
+.sub-btn:active { transform: translateY(2px); }
+
+/* クリア／チートモード解放モーダル */
+#cheat-modal {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+  background: rgba(40,20,60,.55);
+}
+.cheat-card {
+  text-align: center; background: var(--panel); border: 4px solid #fff; border-radius: 26px;
+  padding: 30px 36px; box-shadow: var(--shadow); animation: pop-in .4s cubic-bezier(.2,1.3,.4,1);
+  max-width: 92vw;
+}
+.cheat-emoji { font-size: 54px; }
+.cheat-card h2 { color: var(--pop-red); font-size: 26px; margin: 6px 0 10px; }
+.cheat-card p { color: var(--ink-soft); font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+.cheat-card b { color: var(--caramel); }
+.cheat-buttons { display: flex; gap: 12px; justify-content: center; }

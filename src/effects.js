@@ -184,7 +184,9 @@ class AudioKit {
   constructor() {
     this.muted = false;
     this.sePool = {};   // key -> Audio[]（多重再生用）
-    this.bgm = null;
+    this.bgmTracks = {};   // key -> Audio
+    this.bgmKey = null;    // 鳴らしたいトラック
+    this.bgmVol = 0.32;
     this.poolSize = 6;
     this.unlocked = false;
   }
@@ -200,18 +202,33 @@ class AudioKit {
     this.sePool[key] = { arr, i: 0 };
   }
 
-  loadBGM(url) {
-    this.bgm = new Audio(url);
-    this.bgm.loop = true;
-    this.bgm.volume = 0.35;
-    this.bgm.preload = 'auto';
+  /** BGMトラックを登録（複数可） */
+  loadBGM(key, url) {
+    const a = new Audio(url);
+    a.loop = true;
+    a.volume = this.bgmVol;
+    a.preload = 'auto';
+    this.bgmTracks[key] = a;
+  }
+
+  /** フェーズ等でBGMを切り替える。 */
+  playBGM(key) {
+    if (this.bgmKey === key) return;
+    // 前のトラックを止める
+    if (this.bgmKey && this.bgmTracks[this.bgmKey]) {
+      try { this.bgmTracks[this.bgmKey].pause(); } catch (e) {}
+    }
+    this.bgmKey = key;
+    const a = this.bgmTracks[key];
+    if (a && this.unlocked && !this.muted) { try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} }
   }
 
   /** 初回ユーザー操作で再生をアンロック（自動再生ポリシー対策） */
   unlock() {
     if (this.unlocked) return;
     this.unlocked = true;
-    if (this.bgm && !this.muted) this.bgm.play().catch(() => {});
+    const a = this.bgmTracks[this.bgmKey];
+    if (a && !this.muted) a.play().catch(() => {});
   }
 
   /** 効果音再生。rate でピッチを揺らして連打を気持ちよく。 */
@@ -232,9 +249,10 @@ class AudioKit {
 
   toggleMute() {
     this.muted = !this.muted;
-    if (this.bgm) {
-      if (this.muted) this.bgm.pause();
-      else if (this.unlocked) this.bgm.play().catch(() => {});
+    const a = this.bgmTracks[this.bgmKey];
+    if (a) {
+      if (this.muted) a.pause();
+      else if (this.unlocked) a.play().catch(() => {});
     }
     return this.muted;
   }
