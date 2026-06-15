@@ -20,26 +20,38 @@ const CONFIG = {
 
   // ── 品種（自力タイピングの1打鍵あたり） ──────────────
   //   highest unlocked が「現在の品種」。打鍵スプライトも切り替わる。
-  //   perChar = 1打鍵の基礎粒数。cost = アンロック費用。
+  //   ※ インフレを抑えめに（数字より見た目重視）。レベルでも伸びる。
   varieties: [
-    { id: 'normal',  name: '普通のコーン',     img: 'normal',  perChar: 1,    cost: 0,         desc: '1文字 = 1粒。すべての始まり。' },
-    { id: 'caramel', name: 'キャラメルコーン', img: 'caramel', perChar: 5,    cost: 1000,      desc: '1文字 = 5粒。あまくてカリッ。' },
-    { id: 'truffle', name: 'トリュフ塩コーン', img: 'truffle', perChar: 50,   cost: 50000,     desc: '1文字 = 50粒。高級な香り。' },
-    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 1000, cost: 3000000,   desc: '1文字 = 1000粒。食べられるのか…？' },
+    { id: 'normal',  name: '普通のコーン',     img: 'normal',  perChar: 1,  cost: 0,      desc: '1文字 = 1粒。すべての始まり。' },
+    { id: 'caramel', name: 'キャラメルコーン', img: 'caramel', perChar: 3,  cost: 300,    desc: '1文字 = 3粒。あまくてカリッ。' },
+    { id: 'truffle', name: 'トリュフ塩コーン', img: 'truffle', perChar: 10, cost: 6000,   desc: '1文字 = 10粒。高級な香り。' },
+    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 30, cost: 80000,  desc: '1文字 = 30粒。食べられるのか…？' },
   ],
 
-  // ── 設備（自動生産 CPS） ────────────────────────────
-  //   cost = 1台目の価格。1.15^所有数 で上昇。cps = 1台あたり毎秒粒数。
+  // ── レベル（タイピングで上げる。手入力がいちばん強い源泉） ──
+  //   レベルが上がるほど 1打鍵の粒が増え、はじける粒の数も増える（Lv2=2個）。
+  level: {
+    base: 1,          // 1打鍵 = variety.perChar × level × combo × salt
+    costBase: 60,     // Lv2 にするコスト
+    costGrowth: 1.55, // レベルごとのコスト上昇
+    particlePerLevel: 1,   // レベル1につき はじける粒 +1
+    particleCap: 14,       // 1打鍵で飛ぶ粒の上限（描画保護）
+  },
+
+  // ── 設備（自動生産・あくまで“軽い味付け”） ──────────────
+  //   ★手入力が最強★ なので cps は控えめ（数秒に数粒〜）。
+  //   見た目（画面に置かれて、ぽんぽん弾ける）で楽しませるのが主目的。
+  //   tier でステージ上のグループ分け（序盤/中盤/終盤）。
   equipment: [
-    { id: 'pan',        name: 'フライパン',             img: 'pan',        cost: 15,        cps: 1,      desc: '鍋ひとつ。ぽつぽつ弾ける。' },
-    { id: 'panGrandma', name: 'フライパン＋おばあちゃん', img: 'panGrandma', cost: 120,       cps: 8,      desc: 'おばあちゃん参戦。手際がいい。' },
-    { id: 'microwave',  name: '電子レンジ',             img: 'microwave',  cost: 1300,      cps: 50,     desc: 'チンッ！で大量生産。' },
-    { id: 'cinema',     name: '映画館の業務用マシン',     img: 'cinema',     cost: 14000,     cps: 300,    desc: '映画のお供を本格生産。' },
-    { id: 'ponkashi',   name: '屋台のポン菓子機',         img: 'ponkashi',   cost: 160000,    cps: 1800,   desc: 'ボンッ！と一気に爆発。' },
-    { id: 'factory',    name: '巨大ポップコーン工場',     img: 'factory',    cost: 1800000,   cps: 10000,  desc: 'ラインで休みなく生産。' },
-    { id: 'world',      name: 'ポップコーンワールド',     img: 'world',      cost: 22000000,  cps: 65000,  desc: '黄金の浮遊島。もはや国家規模。' },
+    { id: 'pan',        name: 'フライパン',             img: 'pan',        cost: 60,       cps: 0.3,  tier: 0, desc: '鍋ひとつ。ぽつ…ぽつ…と弾ける。' },
+    { id: 'panGrandma', name: 'フライパン＋おばあちゃん', img: 'panGrandma', cost: 400,      cps: 1,    tier: 0, desc: 'おばあちゃん参戦。買うほど人数が増える。' },
+    { id: 'microwave',  name: '電子レンジ',             img: 'microwave',  cost: 3000,     cps: 3,    tier: 1, desc: 'チンッ！で焼ける。' },
+    { id: 'cinema',     name: '映画館の業務用マシン',     img: 'cinema',     cost: 24000,    cps: 9,    tier: 1, desc: '映画のお供を生産。' },
+    { id: 'ponkashi',   name: '屋台のポン菓子機',         img: 'ponkashi',   cost: 180000,   cps: 26,   tier: 1, desc: 'ボンッ！と弾ける。' },
+    { id: 'factory',    name: '巨大ポップコーン工場',     img: 'factory',    cost: 1500000,  cps: 75,   tier: 2, desc: 'ラインで生産。' },
+    { id: 'world',      name: 'ポップコーンワールド',     img: 'world',      cost: 12000000, cps: 220,  tier: 2, desc: '中央に浮かぶ黄金の島。ガンガン自動生成。' },
   ],
-  equipmentGrowth: 1.15,   // 1台買うごとの価格上昇率
+  equipmentGrowth: 1.18,   // 1台買うごとの価格上昇率
 
   // ── コンボ（連続ノーミス打鍵の倍率） ────────────────
   //   threshold 文字以上の連続正解で mult 倍。ミスで 0 にリセット。
@@ -58,9 +70,9 @@ const CONFIG = {
 
   // ── 転生（プレステージ・フェーズA：塩の永続倍率） ──────
   prestige: {
-    base: 1e6,        // この粒数で塩1個（sqrt曲線）。1e6で1, 1e8で10, 1e9で約31, 1e12で1000。
+    base: 1e5,        // この粒数で塩1個（sqrt曲線）。インフレ抑えめに合わせて下げた。
     saltMult: 0.10,   // 塩1個につき全生産 +10%
-    minSalt: 1,       // 転生に必要な最低獲得塩（=総生産1e6で解禁、約5〜8分）
+    minSalt: 1,       // 転生に必要な最低獲得塩
   },
 
   // ── オフライン生産 ──────────────────────────────────

@@ -78,8 +78,20 @@ function kanaUnits(kana) {
   // 各単位を許容ローマ字配列へ。促音「っ」は次単位に畳み込む
   const out = [];
   let dbl = false;
+  let lastVowel = '';          // 直前の単位の母音（長音「ー」用）
   for (const u of raw) {
     if (u === 'っ') { dbl = true; continue; }
+
+    // 長音「ー」：ハイフン「-」でも、直前の母音をのばす綴りでも受理
+    //   例: ばたー → "bata-" でも "bataa" でもOK
+    if (u === 'ー') {
+      const vars = ['-'];
+      if (lastVowel) vars.push(lastVowel);
+      out.push(vars);
+      dbl = false;
+      continue;            // lastVowel は維持（連続「ー」にも対応）
+    }
+
     let vars = (KANA_ROMA[u] || [u]).slice();
     if (dbl) {
       // 直後の頭文字が子音なら重ねる（kka, ssi...）。母音始まりは重ねない
@@ -90,6 +102,9 @@ function kanaUnits(kana) {
       dbl = false;
     }
     out.push(vars);
+    // この単位の母音（デフォルト綴りの末尾が母音なら記録）
+    const last = vars[0][vars[0].length - 1];
+    if ('aiueo'.includes(last)) lastVowel = last;
   }
   return out;
 }
@@ -221,7 +236,7 @@ class TypingWord {
 //      });
 //      // やめるとき: detach();
 // ────────────────────────────────────────────────
-function attachKeyInput({ onChar, onBackspace, onEnter, onEscape, isActive } = {}) {
+function attachKeyInput({ onChar, onBackspace, onEnter, onEscape, onDigit, isActive } = {}) {
   const handler = (e) => {
     if (e.isComposing) return;                    // IME変換中は無視
     if (isActive && !isActive()) {
@@ -235,8 +250,14 @@ function attachKeyInput({ onChar, onBackspace, onEnter, onEscape, isActive } = {
       if (onBackspace) onBackspace();
       return;
     }
-    // a-z（大文字も小文字化して受理）。それ以外（かな・記号・スペース）は捨てる
-    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+    // 数字キー（1〜9）はショートカット（品種/レベル/設備など）に回す
+    if (onDigit && e.key.length === 1 && /[0-9]/.test(e.key)) {
+      e.preventDefault();
+      onDigit(e.key);
+      return;
+    }
+    // a-z と長音「ー」用のハイフン「-」を受理。それ以外（かな・記号・スペース）は捨てる
+    if (e.key.length === 1 && (/[a-zA-Z]/.test(e.key) || e.key === '-')) {
       e.preventDefault();
       if (onChar) onChar(e.key.toLowerCase());
     }

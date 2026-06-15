@@ -36,6 +36,7 @@
       </div>
     </div>
     <div class="hud-stats">
+      <div class="stat"><span class="stat-label">レベル</span><span id="level-count">1</span></div>
       <div class="stat"><span class="stat-label">1打鍵</span><span id="perchar-count">1</span></div>
       <div class="stat salt-stat"><img id="salt-icon" alt="salt"><span id="salt-count">0</span></div>
       <button id="mute-btn" class="icon-btn" title="音のオン/オフ">🔊</button>
@@ -55,6 +56,13 @@
       <img id="corn-sprite" alt="corn">
       <div id="word-display">レディ…？</div>
       <div id="romaji-guide"><span id="romaji-done"></span><span id="romaji-left"></span></div>
+    </div>
+
+    <!-- 数字キーでキーボード完結（マウス不要） -->
+    <div id="key-hints">
+      <button class="key-hint" data-key="1"><kbd>1</kbd><span class="kh-name">品種研究</span><span class="kh-cost" id="kh-variety"></span></button>
+      <button class="key-hint" data-key="2"><kbd>2</kbd><span class="kh-name">レベルUP</span><span class="kh-cost" id="kh-level"></span></button>
+      <button class="key-hint" data-key="3"><kbd>3</kbd><span class="kh-name">設備をふやす</span><span class="kh-cost" id="kh-equip"></span></button>
     </div>
 
     <!-- 山盛りメーター（転生までの目安） -->

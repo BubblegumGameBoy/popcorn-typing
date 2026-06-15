@@ -40,12 +40,23 @@
   }
 
   // ── 演出ヘルパ ────────────────────────────────────
-  function spawnPoint() {
+  function cornCenter() {
     const cr = canvas.getBoundingClientRect();
     const sp = UI.el.cornSprite.getBoundingClientRect();
-    return { x: sp.left + sp.width / 2 - cr.left, y: sp.top + sp.height / 2 - cr.top };
+    return { x: sp.left + sp.width / 2 - cr.left, y: sp.top + sp.height / 2 - cr.top, w: cr.width, h: cr.height };
   }
   function cornKey() { return game.variety.img; }
+
+  /** 画面全体に散らして弾けさせる（中央だけにしない） */
+  function scatterBurst(count, key, power, spread) {
+    const c = cornCenter();
+    const band = spread === undefined ? 0.7 : spread;   // 横の散らばり（画面幅比）
+    for (let i = 0; i < count; i++) {
+      const x = c.w * (0.5 + (Math.random() - 0.5) * band);
+      const y = c.y + (Math.random() - 0.5) * c.h * 0.35;
+      particles.burst(x, y, 1, key, power);
+    }
+  }
 
   let lastComboMult = 1;
 
@@ -60,20 +71,19 @@
       UI.flashMiss();
       UI.showCombo(0, 1);
       lastComboMult = 1;
-      // ミスは焦げポップで軽くフィードバック
-      const p = spawnPoint();
-      particles.burst(p.x, p.y, 1, 'charcoal', 0.6);
+      // ミスは焦げポップ＋鈍い音で軽くフィードバック
+      scatterBurst(1, 'charcoal', 0.6, 0.2);
+      audio.play('pop1', 0.5, 0.3);
       return;
     }
 
-    // 正解打鍵
-    const gain = game.typeChar();
+    // 正解打鍵：1打鍵ごとに必ず効果音＋レベルぶんの粒を散らす
+    game.typeChar();
     UI.setProgress(r.done, r.left);
     UI.bumpCorn();
-    const p = spawnPoint();
-    particles.burst(p.x, p.y, cfg.fx.typePop, cornKey(), 1);
-    // ピッチを少し揺らして連打を気持ちよく
-    audio.play(Math.random() < 0.5 ? 'pop1' : 'pop2', 0.92 + Math.random() * 0.28, 0.5);
+    scatterBurst(game.particlesPerKey, cornKey(), 1);
+    // ピッチを揺らして連打を気持ちよく（毎回しっかり鳴らす）
+    audio.play(Math.random() < 0.5 ? 'pop1' : 'pop2', 0.9 + Math.random() * 0.35, 0.78);
 
     // コンボ更新
     const cm = game.comboMult;
@@ -81,15 +91,15 @@
     if (cm > lastComboMult) {
       lastComboMult = cm;
       UI.pulseCombo();
-      particles.burst(p.x, p.y, cfg.fx.comboBurst, cornKey(), 1.6);
+      scatterBurst(cfg.fx.comboBurst, cornKey(), 1.6, 0.9);
       audio.play('metal', 1, 0.6);
       UI.toast(`コンボ ×${cm}！`, { good: true });
     }
 
     if (r.status === 'complete') {
-      const bonus = game.completeWord(currentWord.kana.length);
-      // ターンッ！と大破裂
-      particles.burst(p.x, p.y, cfg.fx.wordBurst, cornKey(), 2);
+      game.completeWord(currentWord.kana.length);
+      // ターンッ！と大破裂（画面いっぱいに散らす）
+      scatterBurst(cfg.fx.wordBurst, cornKey(), 2, 1.0);
       audio.play('metal', 1.1, 0.7);
       checkUnlockHints();
       nextWord();
@@ -108,6 +118,22 @@
     if (current) nextWord();
   }
 
+  // 数字キーでキーボード完結（マウス不要）
+  function onDigit(d) {
+    audio.unlock();
+    if (d === '1') handlers.buyVariety(game.varietyIndex + 1);
+    else if (d === '2') handlers.levelUp();
+    else if (d === '3') {
+      const r = game.buyBestEquip();
+      if (r) {
+        audio.play('pop1', 0.8, 0.5);
+        if (r.first) UI.toast(`⚙️ ${cfg.equipment[r.index].name} を手に入れた！`, { good: true, big: true });
+      } else {
+        UI.toast('設備を買う粒が足りない…', {});
+      }
+    }
+  }
+
   // ── 進行ヒント（品種解放など気づきを促す） ──────────
   let hintedVariety = -1;
   function checkUnlockHints() {
@@ -121,20 +147,34 @@
   // ── 購入ハンドラ ──────────────────────────────────
   const handlers = {
     buyVariety(i) {
-      if (i !== game.varietyIndex + 1) return;
+      if (i !== game.varietyIndex + 1) return false;
       if (game.buyVariety()) {
         UI.setCornSprite(cornKey());
         UI.toast(`🌽 ${game.variety.name} を研究した！`, { good: true, big: true });
         audio.play('result', 1.2, 0.5);
-        const p = spawnPoint();
-        particles.burst(p.x, p.y, 30, cornKey(), 2.2);
+        scatterBurst(30, cornKey(), 2.2, 1.0);
+        return true;
       }
+      return false;
     },
     buyEquip(i) {
       if (game.buyEquip(i)) {
         audio.play('pop1', 0.8, 0.5);
-        if (game.equip[i] === 1) UI.toast(`⚙️ ${cfg.equipment[i].name} を設置！`, { good: true });
+        if (game.equip[i] === 1) UI.toast(`⚙️ ${cfg.equipment[i].name} を手に入れた！`, { good: true, big: true });
+        return true;
       }
+      return false;
+    },
+    levelUp() {
+      if (game.levelUp()) {
+        audio.play('metal', 1.25, 0.7);
+        UI.bumpCorn();
+        UI.toast(`⭐ レベル ${game.level}！ はじける粒が増えた`, { good: true, big: true });
+        scatterBurst(20, cornKey(), 2, 1.0);
+        return true;
+      }
+      UI.toast(`レベルアップに ${FORMAT.fmt(game.levelCost)} 粒 必要`, {});
+      return false;
     },
     prestige() {
       const gain = game.saltGain;
@@ -145,8 +185,7 @@
       UI.setCornSprite(cornKey());
       UI.toast(`🧂 転生！ 塩 ${FORMAT.fmt(game.salt)} 個（全生産 ×${(game.globalMult).toFixed(1)}）`, { good: true, big: true });
       // 黄金の大破裂
-      const p = spawnPoint();
-      particles.burst(p.x, p.y, 60, 'gold', 2.5);
+      scatterBurst(60, 'gold', 2.5, 1.1);
       hintedVariety = -1;
       nextWord();
       game.save();
@@ -160,6 +199,7 @@
       game.save();
       UI.toast('🔄 最初からスタート！');
     },
+    onDigit(d) { onDigit(d); },   // 数字キーヒントのクリック用
   };
 
   // ── メインループ ──────────────────────────────────
@@ -195,7 +235,7 @@
     }
 
     // 入力
-    attachKeyInput({ onChar, onBackspace, onEnter, isActive: () => true });
+    attachKeyInput({ onChar, onBackspace, onEnter, onDigit, isActive: () => true });
 
     // ミュート
     document.getElementById('mute-btn').addEventListener('click', (e) => {

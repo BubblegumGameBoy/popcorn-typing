@@ -152,6 +152,31 @@ html, body {
 #combo-mult { font-size: 22px; color: var(--pop-red); }
 #combo-badge.pulse { animation: pulse .3s; }
 
+/* 数字キーのヒントバー */
+#key-hints {
+  position: absolute; bottom: 46px; left: 50%; transform: translateX(-50%);
+  z-index: 3; display: flex; gap: 10px;
+}
+.key-hint {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel); border: 3px solid #fff; border-radius: 14px;
+  padding: 8px 14px; cursor: pointer; box-shadow: var(--shadow);
+  font-weight: 800; color: var(--ink); transition: transform .08s;
+}
+.key-hint:active { transform: translateY(2px); }
+.key-hint kbd {
+  background: var(--ink); color: #fff; border-radius: 8px; padding: 2px 9px;
+  font-size: 16px; font-family: inherit; box-shadow: 0 2px 0 rgba(0,0,0,.3);
+}
+.key-hint .kh-name { font-size: 13px; }
+.key-hint .kh-cost { font-size: 13px; color: var(--caramel); }
+.key-hint.affordable { border-color: var(--butter); box-shadow: 0 0 0 3px var(--butter), var(--shadow); }
+.key-hint.affordable kbd { background: var(--pop-red); animation: kbd-glow 1s infinite; }
+.key-hint.locked { opacity: .6; }
+.key-hint.locked .kh-cost { color: #bbb; }
+.key-hint.maxed .kh-cost { color: var(--ink-soft); }
+@keyframes kbd-glow { 0%,100%{box-shadow:0 2px 0 rgba(0,0,0,.3);} 50%{box-shadow:0 2px 0 rgba(0,0,0,.3), 0 0 10px var(--pop-red);} }
+
 /* 山盛りメーター */
 #pile-wrap {
   position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);

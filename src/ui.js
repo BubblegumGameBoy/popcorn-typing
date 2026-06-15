@@ -17,12 +17,14 @@ const UI = {
     const $ = (id) => document.getElementById(id);
     this.el = {
       popcorn: $('popcorn-count'), cps: $('cps-count'), perChar: $('perchar-count'),
+      level: $('level-count'),
       salt: $('salt-count'), saltIcon: $('salt-icon'), hudCorn: $('hud-corn-icon'),
       cornSprite: $('corn-sprite'), wordDisplay: $('word-display'),
       romajiDone: $('romaji-done'), romajiLeft: $('romaji-left'),
       typingPanel: $('typing-panel'),
       comboBadge: $('combo-badge'), comboNum: $('combo-num'), comboMult: $('combo-mult'),
       pileFill: $('pile-fill'), pileLabel: $('pile-label'),
+      khVariety: $('kh-variety'), khLevel: $('kh-level'), khEquip: $('kh-equip'),
       tabVariety: $('tab-variety'), tabEquip: $('tab-equip'), tabPrestige: $('tab-prestige'),
       toastArea: $('toast-area'),
     };
@@ -32,6 +34,17 @@ const UI = {
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
     });
+  },
+
+  // 数字キーヒントの表示更新
+  _kh(costEl, key, costText, affordable, maxed) {
+    costEl.textContent = maxed ? 'MAX' : '🍿' + costText;
+    const btn = costEl.closest('.key-hint');
+    if (btn) {
+      btn.classList.toggle('affordable', affordable && !maxed);
+      btn.classList.toggle('locked', !affordable && !maxed);
+      btn.classList.toggle('maxed', maxed);
+    }
   },
 
   switchTab(name) {
@@ -61,6 +74,10 @@ const UI = {
     });
     // 転生
     this._buildPrestige(handlers);
+    // 数字キーのヒントボタン（クリックでも数字キーと同じ動作）
+    document.querySelectorAll('.key-hint').forEach(btn => {
+      btn.addEventListener('click', () => handlers.onDigit && handlers.onDigit(btn.dataset.key));
+    });
     this.shopBuilt = true;
   },
 
@@ -112,7 +129,16 @@ const UI = {
     this.el.popcorn.textContent = F.fmt(game.popcorn);
     this.el.cps.textContent = F.fmtRate(game.cps);
     this.el.perChar.textContent = F.fmt(game.perChar);
+    this.el.level.textContent = game.level;
     this.el.salt.textContent = F.fmt(game.salt);
+
+    // 数字キーのヒント（コスト＋購入可否）
+    const nv = game.nextVariety;
+    this._kh(this.el.khVariety, '1', nv ? F.fmt(nv.cost) : 'MAX', nv ? game.popcorn >= nv.cost : false, !nv);
+    this._kh(this.el.khLevel, '2', F.fmt(game.levelCost), game.canLevelUp, false);
+    let cheapest = Infinity;
+    for (let i = 0; i < this.cfg.equipment.length; i++) cheapest = Math.min(cheapest, game.equipCost(i));
+    this._kh(this.el.khEquip, '3', F.fmt(cheapest), game.popcorn >= cheapest, false);
 
     // 品種
     this.varietyRows.forEach((row, i) => {

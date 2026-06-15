@@ -21,6 +21,7 @@ class Game {
     this.totalRun = 0;            // この周回の総生産
     this.varietyIndex = 0;        // 現在の品種（解放済みの最高位）
     this.equip = this.cfg.equipment.map(() => 0);  // 各設備の所有数
+    this.level = 1;               // タイピングレベル（手入力の主軸）
     this.combo = 0;               // 連続ノーミス
     this.maxCombo = 0;
     this.wordsCleared = 0;
@@ -45,9 +46,33 @@ class Game {
     return m;
   }
 
-  /** 1打鍵の獲得粒（コンボ・塩こみ） */
+  /** 1打鍵の基礎（品種 × レベル × 塩）。コンボ前。 */
+  get baseOutput() {
+    return this.variety.perChar * this.level * this.globalMult;
+  }
+
+  /** 1打鍵の獲得粒（コンボこみ） */
   get perChar() {
-    return this.variety.perChar * this.comboMult * this.globalMult;
+    return this.baseOutput * this.comboMult;
+  }
+
+  /** 1打鍵で飛ばす粒の数（レベルに比例、上限あり） */
+  get particlesPerKey() {
+    const L = this.cfg.level;
+    return Math.max(1, Math.min(L.particleCap, this.level * L.particlePerLevel));
+  }
+
+  /** 次のレベルアップ費用 */
+  get levelCost() {
+    const L = this.cfg.level;
+    return Math.floor(L.costBase * Math.pow(L.costGrowth, this.level - 1));
+  }
+  get canLevelUp() { return this.popcorn >= this.levelCost; }
+  levelUp() {
+    if (!this.canLevelUp) return false;
+    this.popcorn -= this.levelCost;
+    this.level++;
+    return true;
   }
 
   /** 毎秒の自動生産（CPS、塩こみ） */
@@ -90,8 +115,7 @@ class Game {
   /** 1ワード完成ボーナス。獲得粒を返す。 */
   completeWord(charCount) {
     this.wordsCleared++;
-    const bonus = charCount * this.variety.perChar * this.cfg.wordBonusMult
-                  * this.comboMult * this.globalMult;
+    const bonus = charCount * this.baseOutput * this.cfg.wordBonusMult * this.comboMult;
     this._earn(bonus);
     return bonus;
   }
@@ -118,6 +142,14 @@ class Game {
     this.popcorn -= cost;
     this.equip[i]++;
     return true;
+  }
+
+  /** キーボード用：買える中で最も進んだ設備を1つ買う。買えたら index を返す。 */
+  buyBestEquip() {
+    for (let i = this.cfg.equipment.length - 1; i >= 0; i--) {
+      if (this.popcorn >= this.equipCost(i)) { const first = this.equip[i] === 0; this.buyEquip(i); return { index: i, first }; }
+    }
+    return null;
   }
 
   // ── 転生（プレステージ） ────────────────────────────
@@ -159,7 +191,7 @@ class Game {
     return JSON.stringify({
       v: 1,
       popcorn: this.popcorn, totalRun: this.totalRun, totalAllTime: this.totalAllTime,
-      varietyIndex: this.varietyIndex, equip: this.equip,
+      varietyIndex: this.varietyIndex, equip: this.equip, level: this.level,
       salt: this.salt, prestiges: this.prestiges,
       maxCombo: this.maxCombo, wordsCleared: this.wordsCleared,
       lastSeen: Date.now(),
@@ -175,6 +207,7 @@ class Game {
       this.varietyIndex = Math.min(d.varietyIndex || 0, this.cfg.varieties.length - 1);
       this.equip = (d.equip && d.equip.length === this.cfg.equipment.length)
         ? d.equip.slice() : this.cfg.equipment.map(() => 0);
+      this.level = d.level || 1;
       this.salt = d.salt || 0;
       this.prestiges = d.prestiges || 0;
       this.maxCombo = d.maxCombo || 0;

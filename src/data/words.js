@@ -2,51 +2,39 @@
  * ============================================================
  *  お題データ  (words.js)
  * ============================================================
- *  popcorn-typing のタイピングお題。
+ *  各お題は { text, kana }。
+ *    - text : 表示用（漢字・カタカナOK）
+ *    - kana : 打鍵用ひらがな（typing-engine.js が判定）
  *
- *  ■ 形式
- *    各お題は { text, kana } のペア。
- *      - text : 画面に見せる表示用（漢字・カタカナOK）
- *      - kana : 実際に打つひらがな（typing-engine.js が判定に使う）
- *    ※ kana は typing-engine の KANA_ROMA で扱える文字のみ
- *      （ひらがな・促音っ・拗音・長音ー）。カタカナ語はひらがな化して入れる。
- *
- *  ■ レベル分け（difficulty）
- *      1 = やさしい（単語〜短い）  2 = ふつう（短文）  3 = ちょい長め
- *    序盤は 1〜2 中心、進むほど 2〜3 を混ぜる想定。
- *
- *  ■ テーマ
- *    ポップコーン / 遊園地 / おやつ / 小学生が好きそうな元気ワード。
- *    世界観に合わせて、明るくバカっぽく。
+ *  ■ 長音「ー」はそのまま使える。
+ *    エンジン側で「ー」は ハイフン "-" でも、直前の母音でも受理する。
+ *    例: ばたー → "bata-" でも "bataa" でもOK / はっぴー → "happi-"/"happii"
+ *  ■ 「じぇ・てぃ」等の一部の外来小書き音は未対応なので避ける。
  * ============================================================
  */
 
-//  ★注意（typing-engine.js の制約に合わせる）
-//    - 長音「ー」は打てない（a-z のみ受付）→ 母音をのばす綴りで書く
-//      例: コーン → こおん / バター → ばたあ / ハッピー → はっぴい
-//    - 「じぇ・てぃ」等の小書きェ系の組み合わせは未対応 → 使わない
 const WORDS = [
-  // ── レベル1：やさしい単語（ウォームアップ） ──
-  { text: 'ポップコーン',     kana: 'ぽっぷこおん',         difficulty: 1 },
+  // ── レベル1：やさしい単語 ──
+  { text: 'ポップコーン',     kana: 'ぽっぷこーん',         difficulty: 1 },
   { text: 'キャラメル',       kana: 'きゃらめる',           difficulty: 1 },
-  { text: 'バター',           kana: 'ばたあ',               difficulty: 1 },
+  { text: 'バター',           kana: 'ばたー',               difficulty: 1 },
   { text: 'しお',             kana: 'しお',                 difficulty: 1 },
   { text: 'あまい',           kana: 'あまい',               difficulty: 1 },
   { text: 'おやつ',           kana: 'おやつ',               difficulty: 1 },
-  { text: 'ジュース',         kana: 'じゅうす',             difficulty: 1 },
+  { text: 'ジュース',         kana: 'じゅーす',             difficulty: 1 },
   { text: 'わたあめ',         kana: 'わたあめ',             difficulty: 1 },
   { text: 'かんらんしゃ',     kana: 'かんらんしゃ',         difficulty: 1 },
-  { text: 'メリーゴーランド', kana: 'めりいごおらんど',     difficulty: 1 },
-  { text: 'ゴーカート',       kana: 'ごおかあと',           difficulty: 1 },
+  { text: 'メリーゴーランド', kana: 'めりーごーらんど',     difficulty: 1 },
+  { text: 'ゴーカート',       kana: 'ごーかーと',           difficulty: 1 },
   { text: 'おばけやしき',     kana: 'おばけやしき',         difficulty: 1 },
   { text: 'ふうせん',         kana: 'ふうせん',             difficulty: 1 },
   { text: 'チケット',         kana: 'ちけっと',             difficulty: 1 },
-  { text: 'ハッピー',         kana: 'はっぴい',             difficulty: 1 },
+  { text: 'ハッピー',         kana: 'はっぴー',             difficulty: 1 },
 
-  // ── レベル2：ふつうの短文（元気・おもしろ） ──
-  { text: 'ハッピーハッピーハッピー', kana: 'はっぴいはっぴいはっぴい', difficulty: 2 },
-  { text: 'ポップコーンがはじけた',   kana: 'ぽっぷこおんがはじけた',   difficulty: 2 },
-  { text: 'バターのにおいがすごい',   kana: 'ばたあのにおいがすごい',   difficulty: 2 },
+  // ── レベル2：ふつうの短文 ──
+  { text: 'ハッピーハッピーハッピー', kana: 'はっぴーはっぴーはっぴー', difficulty: 2 },
+  { text: 'ポップコーンがはじけた',   kana: 'ぽっぷこーんがはじけた',   difficulty: 2 },
+  { text: 'バターのにおいがすごい',   kana: 'ばたーのにおいがすごい',   difficulty: 2 },
   { text: 'キャラメルあじがすき',     kana: 'きゃらめるあじがすき',     difficulty: 2 },
   { text: 'おかわりちょうだい',       kana: 'おかわりちょうだい',       difficulty: 2 },
   { text: 'かんらんしゃにのろう',     kana: 'かんらんしゃにのろう',     difficulty: 2 },
@@ -54,31 +42,30 @@ const WORDS = [
   { text: 'ぜんぶたべちゃった',       kana: 'ぜんぶたべちゃった',       difficulty: 2 },
   { text: 'もっとやきたい',           kana: 'もっとやきたい',           difficulty: 2 },
   { text: 'こげちゃったかも',         kana: 'こげちゃったかも',         difficulty: 2 },
-  { text: 'てんさいポップコーンや',   kana: 'てんさいぽっぷこおんや',   difficulty: 2 },
+  { text: 'てんさいポップコーンや',   kana: 'てんさいぽっぷこーんや',   difficulty: 2 },
   { text: 'きょうもまんいんおれい',   kana: 'きょうもまんいんおれい',   difficulty: 2 },
   { text: 'たのしいおまつりだ',       kana: 'たのしいおまつりだ',       difficulty: 2 },
   { text: 'わたあめふわふわ',         kana: 'わたあめふわふわ',         difficulty: 2 },
-  { text: 'きんのコーンだ',           kana: 'きんのこおんだ',           difficulty: 2 },
+  { text: 'きんのコーンだ',           kana: 'きんのこーんだ',           difficulty: 2 },
   { text: 'おなかがすいたよ',         kana: 'おなかがすいたよ',         difficulty: 2 },
-  { text: 'ばくはつポップコーン',     kana: 'ばくはつぽっぷこおん',     difficulty: 2 },
+  { text: 'ばくはつポップコーン',     kana: 'ばくはつぽっぷこーん',     difficulty: 2 },
   { text: 'やったぜさいこうきろく',   kana: 'やったぜさいこうきろく',   difficulty: 2 },
   { text: 'おばあちゃんありがとう',   kana: 'おばあちゃんありがとう',   difficulty: 2 },
 
-  // ── レベル3：ちょい長め（コンボ稼ぎ用） ──
-  { text: 'ポップコーンをいっぱいやこう', kana: 'ぽっぷこおんをいっぱいやこう', difficulty: 3 },
-  { text: 'ゆうえんちでポップコーンをうる', kana: 'ゆうえんちでぽっぷこおんをうる', difficulty: 3 },
+  // ── レベル3：ちょい長め ──
+  { text: 'ポップコーンをいっぱいやこう', kana: 'ぽっぷこーんをいっぱいやこう', difficulty: 3 },
+  { text: 'ゆうえんちでポップコーンをうる', kana: 'ゆうえんちでぽっぷこーんをうる', difficulty: 3 },
   { text: 'キャラメルあじをたくさんつくる', kana: 'きゃらめるあじをたくさんつくる', difficulty: 3 },
-  { text: 'せかいいちのポップコーンやさん', kana: 'せかいいちのぽっぷこおんやさん', difficulty: 3 },
+  { text: 'せかいいちのポップコーンやさん', kana: 'せかいいちのぽっぷこーんやさん', difficulty: 3 },
   { text: 'まほうのしおでもっとあまくなる', kana: 'まほうのしおでもっとあまくなる', difficulty: 3 },
-  { text: 'たいようのちからでコーンをやく', kana: 'たいようのちからでこおんをやく', difficulty: 3 },
+  { text: 'たいようのちからでコーンをやく', kana: 'たいようのちからでこーんをやく', difficulty: 3 },
   { text: 'てをとめずにどんどんはじけさせろ', kana: 'てをとめずにどんどんはじけさせろ', difficulty: 3 },
   { text: 'みんなでたべるとおいしいねえ',     kana: 'みんなでたべるとおいしいねえ',     difficulty: 3 },
 ];
 
 // ────────────────────────────────────────────────
 //  流行語パック（小学生〜中高生に人気のネットスラング・ミーム）
-//  ※ 難易度関係なく「打ってて楽しい」ことを優先。engine 検証済み。
-//    difficulty は kana 長で自動付与（下の normalize で）。
+//  ※ engine 検証済み。difficulty は kana 長で自動付与。
 // ────────────────────────────────────────────────
 const BUZZWORDS = [
   { text: 'それな', kana: 'それな' },{ text: 'わかる', kana: 'わかる' },{ text: 'わかりみ', kana: 'わかりみ' },
@@ -86,7 +73,7 @@ const BUZZWORDS = [
   { text: 'とりあえずまる', kana: 'とりあえずまる' },{ text: 'りょ', kana: 'りょ' },{ text: 'まる', kana: 'まる' },
   { text: 'ぴえん', kana: 'ぴえん' },{ text: 'ぱおん', kana: 'ぱおん' },{ text: 'ぴえん超えてぱおん', kana: 'ぴえんこえてぱおん' },
   { text: 'エモい', kana: 'えもい' },{ text: 'やばい', kana: 'やばい' },{ text: 'てぇてぇ', kana: 'てえてえ' },
-  { text: '尊い', kana: 'とおとい' },{ text: 'きゅんです', kana: 'きゅんです' },{ text: 'メロい', kana: 'めろい' },
+  { text: '尊い', kana: 'とうとい' },{ text: 'きゅんです', kana: 'きゅんです' },{ text: 'メロい', kana: 'めろい' },
   { text: 'ぷりてぃ', kana: 'ぷりてい' },{ text: 'かわちい', kana: 'かわちい' },{ text: 'はにゃ', kana: 'はにゃ' },
   { text: 'ガチ', kana: 'がち' },{ text: 'まじ', kana: 'まじ' },{ text: 'つよつよ', kana: 'つよつよ' },
   { text: 'よわよわ', kana: 'よわよわ' },{ text: 'ちょべりぐ', kana: 'ちょべりぐ' },{ text: 'しか勝たん', kana: 'しかかたん' },
@@ -96,12 +83,12 @@ const BUZZWORDS = [
   { text: 'ふぁぼ', kana: 'ふぁぼ' },{ text: 'ぐぐる', kana: 'ぐぐる' },{ text: 'タピる', kana: 'たぴる' },
   { text: 'ヌン活', kana: 'ぬんかつ' },{ text: '映え', kana: 'ばえ' },{ text: '知らんけど', kana: 'しらんけど' },
   { text: '推し活', kana: 'おしかつ' },{ text: 'ガチ恋', kana: 'がちこい' },{ text: 'ひき肉です', kana: 'ひきにくです' },
-  { text: '切り替えピース', kana: 'きりかえぴいす' },{ text: '厳しいって', kana: 'きびしいって' },
-  { text: 'ハッピーハッピーハッピー', kana: 'はっぴいはっぴいはっぴい' },{ text: 'エッホエッホ', kana: 'えっほえっほ' },
-  { text: 'チャオチャオ', kana: 'ちゃおちゃお' },{ text: 'こんにちワニ', kana: 'こんにちわに' },{ text: 'なぁぜなぁぜ', kana: 'なあぜなあぜ' },
+  { text: '切り替えピース', kana: 'きりかえぴーす' },{ text: '厳しいって', kana: 'きびしいって' },
+  { text: 'エッホエッホ', kana: 'えっほえっほ' },{ text: 'チャオチャオ', kana: 'ちゃおちゃお' },
+  { text: 'こんにちワニ', kana: 'こんにちわに' },{ text: 'なぁぜなぁぜ', kana: 'なあぜなあぜ' },
   { text: 'しかのこのこのここしたんたん', kana: 'しかのこのこのここしたんたん' },{ text: '開示だな', kana: 'かいじだな' },
   { text: 'ナルトダンス', kana: 'なるとだんす' },{ text: 'イタリアンブレインロット', kana: 'いたりあんぶれいんろっと' },
-  { text: 'ほんマネー', kana: 'ほんまねえ' },{ text: 'それガーチャー', kana: 'それがあちゃあ' },{ text: 'ちいかわ', kana: 'ちいかわ' },
+  { text: 'ほんマネー', kana: 'ほんまねー' },{ text: 'それガーチャー', kana: 'それがーちゃー' },{ text: 'ちいかわ', kana: 'ちいかわ' },
   { text: '神回', kana: 'かみかい' },{ text: '草', kana: 'くさ' },{ text: '大草原', kana: 'だいそうげん' },
 ];
 
