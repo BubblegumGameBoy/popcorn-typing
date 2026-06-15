@@ -75,18 +75,63 @@ const WORDS = [
   { text: 'みんなでたべるとおいしいねえ',     kana: 'みんなでたべるとおいしいねえ',     difficulty: 3 },
 ];
 
-// ─ 便利関数：難易度でフィルタ ─
-function wordsByDifficulty(level) {
-  return WORDS.filter(w => w.difficulty === level);
-}
+// ────────────────────────────────────────────────
+//  流行語パック（小学生〜中高生に人気のネットスラング・ミーム）
+//  ※ 難易度関係なく「打ってて楽しい」ことを優先。engine 検証済み。
+//    difficulty は kana 長で自動付与（下の normalize で）。
+// ────────────────────────────────────────────────
+const BUZZWORDS = [
+  { text: 'それな', kana: 'それな' },{ text: 'わかる', kana: 'わかる' },{ text: 'わかりみ', kana: 'わかりみ' },
+  { text: 'たしかに', kana: 'たしかに' },{ text: 'ほんそれ', kana: 'ほんそれ' },{ text: 'おけまる', kana: 'おけまる' },
+  { text: 'とりあえずまる', kana: 'とりあえずまる' },{ text: 'りょ', kana: 'りょ' },{ text: 'まる', kana: 'まる' },
+  { text: 'ぴえん', kana: 'ぴえん' },{ text: 'ぱおん', kana: 'ぱおん' },{ text: 'ぴえん超えてぱおん', kana: 'ぴえんこえてぱおん' },
+  { text: 'エモい', kana: 'えもい' },{ text: 'やばい', kana: 'やばい' },{ text: 'てぇてぇ', kana: 'てえてえ' },
+  { text: '尊い', kana: 'とおとい' },{ text: 'きゅんです', kana: 'きゅんです' },{ text: 'メロい', kana: 'めろい' },
+  { text: 'ぷりてぃ', kana: 'ぷりてい' },{ text: 'かわちい', kana: 'かわちい' },{ text: 'はにゃ', kana: 'はにゃ' },
+  { text: 'ガチ', kana: 'がち' },{ text: 'まじ', kana: 'まじ' },{ text: 'つよつよ', kana: 'つよつよ' },
+  { text: 'よわよわ', kana: 'よわよわ' },{ text: 'ちょべりぐ', kana: 'ちょべりぐ' },{ text: 'しか勝たん', kana: 'しかかたん' },
+  { text: 'ありよりのあり', kana: 'ありよりのあり' },{ text: 'なしよりのなし', kana: 'なしよりのなし' },{ text: 'よきよき', kana: 'よきよき' },
+  { text: 'うま確', kana: 'うまかく' },{ text: 'ビジュイイじゃん', kana: 'びじゅいいじゃん' },{ text: 'ビジュ爆発', kana: 'びじゅばくはつ' },
+  { text: 'きまZ', kana: 'きまずい' },{ text: 'とりま', kana: 'とりま' },{ text: 'なるはや', kana: 'なるはや' },
+  { text: 'ふぁぼ', kana: 'ふぁぼ' },{ text: 'ぐぐる', kana: 'ぐぐる' },{ text: 'タピる', kana: 'たぴる' },
+  { text: 'ヌン活', kana: 'ぬんかつ' },{ text: '映え', kana: 'ばえ' },{ text: '知らんけど', kana: 'しらんけど' },
+  { text: '推し活', kana: 'おしかつ' },{ text: 'ガチ恋', kana: 'がちこい' },{ text: 'ひき肉です', kana: 'ひきにくです' },
+  { text: '切り替えピース', kana: 'きりかえぴいす' },{ text: '厳しいって', kana: 'きびしいって' },
+  { text: 'ハッピーハッピーハッピー', kana: 'はっぴいはっぴいはっぴい' },{ text: 'エッホエッホ', kana: 'えっほえっほ' },
+  { text: 'チャオチャオ', kana: 'ちゃおちゃお' },{ text: 'こんにちワニ', kana: 'こんにちわに' },{ text: 'なぁぜなぁぜ', kana: 'なあぜなあぜ' },
+  { text: 'しかのこのこのここしたんたん', kana: 'しかのこのこのここしたんたん' },{ text: '開示だな', kana: 'かいじだな' },
+  { text: 'ナルトダンス', kana: 'なるとだんす' },{ text: 'イタリアンブレインロット', kana: 'いたりあんぶれいんろっと' },
+  { text: 'ほんマネー', kana: 'ほんまねえ' },{ text: 'それガーチャー', kana: 'それがあちゃあ' },{ text: 'ちいかわ', kana: 'ちいかわ' },
+  { text: '神回', kana: 'かみかい' },{ text: '草', kana: 'くさ' },{ text: '大草原', kana: 'だいそうげん' },
+];
 
-// ─ 便利関数：ランダムに1問 ─
-function randomWord(maxDifficulty = 3) {
-  const pool = WORDS.filter(w => w.difficulty <= maxDifficulty);
-  return pool[Math.floor(Math.random() * pool.length)];
+// kana長で difficulty を自動付与（未指定のもの）
+function _autoDiff(w) {
+  if (w.difficulty) return w;
+  const n = w.kana.length;
+  return Object.assign({ difficulty: n <= 4 ? 1 : n <= 9 ? 2 : 3 }, w);
 }
+const ALL_WORDS = WORDS.concat(BUZZWORDS.map(_autoDiff));
+
+// ────────────────────────────────────────────────
+//  WordBank: お題の取り出し（連続重複を避ける）
+// ────────────────────────────────────────────────
+const WordBank = {
+  all: ALL_WORDS,
+  _last: null,
+  byDifficulty(level) { return ALL_WORDS.filter(w => w.difficulty === level); },
+  random(maxDifficulty = 3) {
+    const pool = ALL_WORDS.filter(w => w.difficulty <= maxDifficulty);
+    let w, guard = 0;
+    do { w = pool[Math.floor(Math.random() * pool.length)]; } while (w === this._last && ++guard < 8);
+    this._last = w;
+    return w;
+  },
+};
+
+if (typeof window !== 'undefined') window.WordBank = window.WordBank || WordBank;
 
 // Node / バンドラ用エクスポート（ブラウザ直読みなら無視される）
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { WORDS, wordsByDifficulty, randomWord };
+  module.exports = { WORDS, BUZZWORDS, ALL_WORDS, WordBank };
 }
