@@ -204,12 +204,18 @@ class ParticleSystem {
 class AudioKit {
   constructor() {
     this.muted = false;
-    this.sePool = {};   // key -> Audio[]（多重再生用）
-    this.bgmTracks = {};   // key -> Audio
-    this.bgmKey = null;    // 鳴らしたいトラック
+    this.sePool = {};      // key -> Audio[]（多重再生用）
+    this.bgmUrls = {};     // key -> url
+    this.bgmKey = null;    // いま鳴らしているトラック
     this.bgmVol = 0.32;
     this.poolSize = 6;
     this.unlocked = false;
+    this.XFADE = 1.4;      // クロスフェード秒
+    // 現トラックは2枚使い（a/b）。末尾で重ねてループの繋ぎ目を消す。
+    this.a = null; this.b = null; this.active = null;
+    this.looping = false;
+    this.fades = [];       // {el, from, to, t, dur, onEnd}
+    setInterval(() => this._tick(), 50);
   }
 
   loadSE(key, url) {
@@ -223,33 +229,75 @@ class AudioKit {
     this.sePool[key] = { arr, i: 0 };
   }
 
-  /** BGMトラックを登録（複数可） */
-  loadBGM(key, url) {
+  /** BGMトラックを登録（URLだけ覚えておく） */
+  loadBGM(key, url) { this.bgmUrls[key] = url; }
+
+  _mkBgm(url) {
     const a = new Audio(url);
-    a.loop = true;
-    a.volume = this.bgmVol;
     a.preload = 'auto';
-    this.bgmTracks[key] = a;
+    a.loop = false;        // ループは自前のクロスフェードで行う
+    a.volume = 0;
+    return a;
+  }
+  _fade(el, from, to, dur, onEnd) {
+    if (!el) return;
+    this.fades = this.fades.filter(f => f.el !== el);
+    try { el.volume = this.muted ? 0 : Math.max(0, Math.min(1, from)); } catch (e) {}
+    this.fades.push({ el, from, to, t: 0, dur, onEnd });
   }
 
-  /** フェーズ等でBGMを切り替える。 */
+  /** フェーズ等でBGMを切り替える（クロスフェード）。 */
   playBGM(key) {
     if (this.bgmKey === key) return;
-    // 前のトラックを止める
-    if (this.bgmKey && this.bgmTracks[this.bgmKey]) {
-      try { this.bgmTracks[this.bgmKey].pause(); } catch (e) {}
-    }
     this.bgmKey = key;
-    const a = this.bgmTracks[key];
-    if (a && this.unlocked && !this.muted) { try { a.currentTime = 0; a.play().catch(() => {}); } catch (e) {} }
+    // 旧トラックをフェードアウト
+    const oldA = this.a, oldB = this.b;
+    if (oldA) this._fade(oldA, oldA.volume, 0, this.XFADE, () => { try { oldA.pause(); } catch (e) {} });
+    if (oldB) this._fade(oldB, oldB.volume, 0, this.XFADE, () => { try { oldB.pause(); } catch (e) {} });
+    // 新トラックを2枚用意してフェードイン
+    const url = this.bgmUrls[key];
+    this.a = this._mkBgm(url); this.b = this._mkBgm(url);
+    this.active = this.a; this.looping = false;
+    if (this.unlocked && !this.muted) {
+      try { this.a.currentTime = 0; this.a.play().catch(() => {}); } catch (e) {}
+      this._fade(this.a, 0, this.bgmVol, this.XFADE);
+    }
   }
 
-  /** 初回ユーザー操作で再生をアンロック（自動再生ポリシー対策） */
+  /** 初回ユーザー操作で再生をアンロック */
   unlock() {
     if (this.unlocked) return;
     this.unlocked = true;
-    const a = this.bgmTracks[this.bgmKey];
-    if (a && !this.muted) a.play().catch(() => {});
+    if (this.active && !this.muted) {
+      try { this.active.currentTime = 0; this.active.play().catch(() => {}); } catch (e) {}
+      this._fade(this.active, 0, this.bgmVol, this.XFADE);
+    }
+  }
+
+  _tick() {
+    const dt = 0.05;
+    // 音量フェード
+    for (let i = this.fades.length - 1; i >= 0; i--) {
+      const f = this.fades[i];
+      f.t += dt;
+      const k = Math.min(1, f.t / f.dur);
+      const v = f.from + (f.to - f.from) * k;
+      try { f.el.volume = this.muted ? 0 : Math.max(0, Math.min(1, v)); } catch (e) {}
+      if (k >= 1) { if (f.onEnd) f.onEnd(); this.fades.splice(i, 1); }
+    }
+    // ループの繋ぎ目を消す：末尾 XFADE 秒前に もう1枚を頭から重ねる
+    if (this.active && this.unlocked && !this.muted && !this.looping) {
+      const a = this.active, dur = a.duration;
+      if (dur && isFinite(dur) && a.currentTime >= dur - this.XFADE) {
+        this.looping = true;
+        const other = (a === this.a) ? this.b : this.a;
+        try { other.currentTime = 0; other.play().catch(() => {}); } catch (e) {}
+        this._fade(other, 0, this.bgmVol, this.XFADE);
+        this._fade(a, a.volume, 0, this.XFADE, () => { try { a.pause(); } catch (e) {} });
+        this.active = other;
+        setTimeout(() => { this.looping = false; }, this.XFADE * 1000 + 80);
+      }
+    }
   }
 
   /** 効果音再生。rate でピッチを揺らして連打を気持ちよく。 */
@@ -270,10 +318,10 @@ class AudioKit {
 
   toggleMute() {
     this.muted = !this.muted;
-    const a = this.bgmTracks[this.bgmKey];
-    if (a) {
-      if (this.muted) a.pause();
-      else if (this.unlocked) a.play().catch(() => {});
+    if (this.muted) {
+      try { if (this.a) this.a.pause(); if (this.b) this.b.pause(); } catch (e) {}
+    } else if (this.unlocked && this.active) {
+      try { this.active.play().catch(() => {}); this.active.volume = this.bgmVol; } catch (e) {}
     }
     return this.muted;
   }
