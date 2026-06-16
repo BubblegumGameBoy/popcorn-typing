@@ -51,12 +51,12 @@
         loading="lazy" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer"
         style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>
     </div>
-    <p style="margin:10px 0 0;font-size:12px;color:#8a6a45;">
-      うまく表示されない時は <a href="https://bubblegumgameboy.github.io/popcorn-typing/" target="_blank" rel="noopener" style="color:#e8534e;">こちら（別タブ）</a>
-    </p>
   </div>
 </div>
 ```
+
+> 全画面は **ゲーム右上の ⛶ ボタン**。許可されていれば その場で全画面、ダメな環境では自動で別タブで開きます。
+> ★その場で全画面にしたいなら、貼り付け後の公開HTMLで iframe に **`allowfullscreen`** が残っているか確認（はてなが消すことがあります。消えていると別タブ動作になります）。
 
 ### 収益・SEO戦略メモ
 - **広告は iframe の"外"＝はてなページ側だけ**（既存 AdSense でOK）。github.io 側はクリーンに保つ。

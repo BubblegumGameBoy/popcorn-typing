@@ -256,16 +256,21 @@
       const muted = audio.toggleMute();
       e.target.textContent = muted ? '🔇' : '🔊';
     });
-    // 全画面（埋め込みでも iframe ごと全画面に。allowfullscreen が要る）
+    // 全画面：できれば その場で全画面（埋め込みなら allowfullscreen が要る）。
+    // 不可なら別タブで開く（はてな等で全画面が許可されていない時のフォールバック）。
     document.getElementById('fs-btn').addEventListener('click', () => {
       const d = document, el = d.documentElement;
+      const openTab = () => { try { window.open(location.href, '_blank', 'noopener'); } catch (e) {} };
       try {
-        if (!d.fullscreenElement && !d.webkitFullscreenElement) {
-          (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el);
-        } else {
+        if (d.fullscreenElement || d.webkitFullscreenElement) {
           (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+          return;
         }
-      } catch (e) {}
+        const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+        if (!req) { openTab(); return; }
+        const pr = req.call(el);
+        if (pr && pr.then) pr.catch(openTab);   // 全画面が拒否されたら別タブ
+      } catch (e) { openTab(); }
     });
     // チートモーダル
     document.getElementById('cheat-yes').addEventListener('click', () => {

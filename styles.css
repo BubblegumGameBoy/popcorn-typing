@@ -257,11 +257,12 @@ body.space-mode #bg-overlay {
   z-index: 3; display: flex; gap: 10px;
 }
 .key-hint {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
   background: var(--panel); border: 3px solid #fff; border-radius: 14px;
   padding: 8px 14px; cursor: pointer; box-shadow: var(--shadow);
   font-weight: 800; color: var(--ink); transition: transform .08s;
 }
+.key-hint .kh-name, .key-hint .kh-cost { white-space: nowrap; }
 .key-hint:active { transform: translateY(2px); }
 .key-hint kbd {
   background: var(--ink); color: #fff; border-radius: 8px; padding: 2px 9px;
