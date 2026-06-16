@@ -374,11 +374,47 @@ body.space-mode #bg-overlay {
 @keyframes toast-out { to { transform: translateY(-10px); opacity: 0; } }
 
 /* 画面が狭いとき */
+/* ===== レスポンシブ（埋め込み・小さめ画面） ===== */
 @media (max-width: 900px) {
-  #game-screen { grid-template-columns: 1fr; grid-template-areas: "hud" "stage" "shop"; grid-template-rows: auto 1fr auto; }
-  #shop { max-height: 38vh; }
-  #typing-panel { min-width: auto; width: 90%; }
+  #game-screen { padding: 8px; gap: 8px; }
+  #hud { flex-wrap: wrap; padding: 6px 12px; gap: 6px; }
+  .hud-main { gap: 8px; }
+  #hud-corn-icon { width: 38px; height: 38px; }
+  .hud-counts #popcorn-count { font-size: 26px; }
+  #cps-line { font-size: 11px; }
+  #facility-strip { gap: 7px; margin: 0 4px; order: 3; flex-basis: 100%; justify-content: flex-start; }
+  .fac { width: 52px; height: 52px; }
+  .hud-stats { gap: 10px; }
+  .stat span:last-child { font-size: 16px; }
+  #typing-panel { min-width: 0; width: 92%; max-width: 520px; padding: 14px 20px; }
+  #word-display { font-size: clamp(22px, 6vw, 36px); margin: 6px 0 8px; }
+  #romaji-guide { font-size: clamp(16px, 4.2vw, 24px); }
+  #container-box { width: 92px; height: 110px; }
+  #container-name { font-size: 17px; }
+  #container-amount, #container-bar { font-size: 12px; }
+  #gen-gauge { width: 34px; height: 50%; left: 6px; }
+  #gen-spark { font-size: 14px; }
+  #gen-label { font-size: 9px; }
+  #key-hints { bottom: 8px; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .key-hint { padding: 7px 10px; }
+  .key-hint .kh-name { font-size: 11px; }
+  .key-hint .kh-cost { font-size: 11px; }
   .game-title { font-size: 42px; }
+}
+@media (max-width: 560px) {
+  #hud-corn-icon { width: 30px; height: 30px; }
+  .hud-counts #popcorn-count { font-size: 21px; }
+  .fac { width: 44px; height: 44px; }
+  #typing-panel { width: 96%; padding: 10px 12px; }
+  #word-display { font-size: clamp(18px, 7vw, 28px); }
+  #romaji-guide { font-size: clamp(14px, 5vw, 20px); letter-spacing: 2px; }
+  #container-box { width: 74px; height: 92px; }
+  #container-name { font-size: 15px; }
+  #gen-gauge { display: none; }
+  .key-hint kbd { padding: 2px 7px; font-size: 13px; }
+  #toast-area { top: 56px; right: 8px; }
+  .toast { font-size: 12px; padding: 8px 14px; }
+  .toast.big { font-size: 14px; padding: 10px 18px; }
 }
 
 /* ============================================================
