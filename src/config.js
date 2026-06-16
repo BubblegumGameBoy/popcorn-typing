@@ -21,21 +21,22 @@ const CONFIG = {
   // ── 品種（自力タイピングの1打鍵あたり） ──────────────
   //   highest unlocked が「現在の品種」。打鍵スプライトも切り替わる。
   //   ※ インフレを抑えめに（数字より見た目重視）。レベルでも伸びる。
+  //   ※「ゆっくり・大ジャンプ」。研究すると1打鍵が一気に跳ね上がる。
   varieties: [
-    { id: 'normal',  name: '普通のコーン',     img: 'normal',  perChar: 1,  cost: 0,      desc: '1文字 = 1粒。すべての始まり。' },
-    { id: 'caramel', name: 'キャラメルコーン', img: 'caramel', perChar: 3,  cost: 300,    desc: '1文字 = 3粒。あまくてカリッ。' },
-    { id: 'truffle', name: 'トリュフ塩コーン', img: 'truffle', perChar: 10, cost: 6000,   desc: '1文字 = 10粒。高級な香り。' },
-    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 30, cost: 80000,  desc: '1文字 = 30粒。食べられるのか…？' },
+    { id: 'normal',  name: '普通のコーン',     img: 'normal',  perChar: 1,    cost: 0,        desc: '1文字 = 1粒。すべての始まり。' },
+    { id: 'caramel', name: 'キャラメルコーン', img: 'caramel', perChar: 15,   cost: 2500,     desc: '1文字 = 15粒。あまくてカリッ。' },
+    { id: 'truffle', name: 'トリュフ塩コーン', img: 'truffle', perChar: 350,  cost: 300000,   desc: '1文字 = 350粒。高級な香り。' },
+    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 9000, cost: 45000000, desc: '1文字 = 9000粒。食べられるのか…？' },
   ],
 
   // ── レベル（タイピングで上げる。手入力がいちばん強い源泉） ──
   //   レベルが上がるほど 1打鍵の粒が増え、はじける粒の数も増える（Lv2=2個）。
   level: {
-    base: 1,          // 1打鍵 = variety.perChar × level × combo × salt
+    base: 1,          // 1打鍵 = variety.perChar × level × combo
     costBase: 60,     // Lv2 にするコスト
-    costGrowth: 1.55, // レベルごとのコスト上昇
+    costGrowth: 1.5,  // レベルごとのコスト上昇
     particlePerLevel: 1,   // レベル1につき はじける粒 +1
-    particleCap: 14,       // 1打鍵で飛ぶ粒の上限（描画保護）
+    particleCap: 18,       // 1打鍵で飛ぶ粒の上限（描画保護）
   },
 
   // ── 設備（自動生産・あくまで“軽い味付け”） ──────────────
@@ -43,13 +44,13 @@ const CONFIG = {
   //   見た目（画面に置かれて、ぽんぽん弾ける）で楽しませるのが主目的。
   //   tier でステージ上のグループ分け（序盤/中盤/終盤）。
   equipment: [
-    { id: 'pan',        name: 'フライパン',             img: 'pan',        cost: 60,       cps: 0.3,  tier: 0, desc: '鍋ひとつ。ぽつ…ぽつ…と弾ける。' },
-    { id: 'panGrandma', name: 'フライパン＋おばあちゃん', img: 'panGrandma', cost: 400,      cps: 1,    tier: 0, desc: 'おばあちゃん参戦。買うほど人数が増える。' },
-    { id: 'microwave',  name: '電子レンジ',             img: 'microwave',  cost: 3000,     cps: 3,    tier: 1, desc: 'チンッ！で焼ける。' },
-    { id: 'cinema',     name: '映画館の業務用マシン',     img: 'cinema',     cost: 24000,    cps: 9,    tier: 1, desc: '映画のお供を生産。' },
-    { id: 'ponkashi',   name: '屋台のポン菓子機',         img: 'ponkashi',   cost: 180000,   cps: 26,   tier: 1, desc: 'ボンッ！と弾ける。' },
-    { id: 'factory',    name: '巨大ポップコーン工場',     img: 'factory',    cost: 1500000,  cps: 75,   tier: 2, desc: 'ラインで生産。' },
-    { id: 'world',      name: 'ポップコーンワールド',     img: 'world',      cost: 12000000, cps: 220,  tier: 2, desc: '中央に浮かぶ黄金の島。ガンガン自動生成。' },
+    { id: 'pan',        name: 'フライパン',             img: 'pan',        cost: 60,       cps: 1.5,  tier: 0, desc: '鍋ひとつ。ぽつ…ぽつ…と弾ける。' },
+    { id: 'panGrandma', name: 'フライパン＋おばあちゃん', img: 'panGrandma', cost: 400,      cps: 5,    tier: 0, desc: 'おばあちゃん参戦。手際がいい。' },
+    { id: 'microwave',  name: '電子レンジ',             img: 'microwave',  cost: 3000,     cps: 16,   tier: 1, desc: 'チンッ！で焼ける。' },
+    { id: 'cinema',     name: '映画館の業務用マシン',     img: 'cinema',     cost: 24000,    cps: 50,   tier: 1, desc: '映画のお供を生産。' },
+    { id: 'ponkashi',   name: '屋台のポン菓子機',         img: 'ponkashi',   cost: 180000,   cps: 140,  tier: 1, desc: 'ボンッ！と弾ける。' },
+    { id: 'factory',    name: '巨大ポップコーン工場',     img: 'factory',    cost: 1500000,  cps: 400,  tier: 2, desc: 'ラインで生産。放置でもガンガン。' },
+    { id: 'world',      name: 'ポップコーンワールド',     img: 'world',      cost: 12000000, cps: 1200, tier: 2, desc: '黄金の島。放置の主力。' },
   ],
   equipmentGrowth: 1.18,   // 1台買うごとの価格上昇率
 
@@ -66,7 +67,7 @@ const CONFIG = {
 
   // ── ワード完成ボーナス ──────────────────────────────
   //   1ワード打ち切ると、文字数 × 基礎粒 × wordBonusMult の臨時ボーナス＋大破裂。
-  wordBonusMult: 3,
+  wordBonusMult: 5,
 
   // ── 容器（目的）：満タンにしたら、もっとデカい容器へ ──────
   //   cap = この容器を満タンにするのに必要な「累計生産」の増分。
@@ -79,17 +80,17 @@ const CONFIG = {
     { name: 'Lカップ',        cap: 9000 },
     { name: 'メガバケツ',      cap: 50000 },
     { name: '一斗缶',         cap: 300000 },
-    { name: '屋台ワゴン',      cap: 2e6 },
-    { name: 'ダンプトラック',  cap: 1.2e7 },
-    { name: 'ビルまるごと',    cap: 8e7 },
-    { name: '大きな山',       cap: 5e8 },
-    { name: '街ぜんぶ',       cap: 3e9 },
-    { name: '日本列島',       cap: 2e10 },
-    { name: '地球',          cap: 1.5e11, space: true },
-    { name: '月もいっしょに',  cap: 1e12,   space: true },
-    { name: '太陽系',         cap: 8e12,   space: true },
-    { name: '天の川銀河',      cap: 6e13,   space: true },
-    { name: '宇宙ぜんぶ',      cap: 5e14,   space: true },
+    { name: '屋台ワゴン',      cap: 1e6 },
+    { name: 'ダンプトラック',  cap: 5e6 },
+    { name: 'ビルまるごと',    cap: 3e7 },
+    { name: '大きな山',       cap: 1.5e8 },
+    { name: '街ぜんぶ',       cap: 8e8 },
+    { name: '日本列島',       cap: 5e9 },
+    { name: '地球',          cap: 3e10,  space: true },
+    { name: '月もいっしょに',  cap: 2e11,  space: true },
+    { name: '太陽系',         cap: 1.5e12, space: true },
+    { name: '天の川銀河',      cap: 1e13,  space: true },
+    { name: '宇宙ぜんぶ',      cap: 1e14,  space: true },
   ],
   containerGrowthBeyond: 8,   // 終端超えで cap を ×8 ずつ
   containerRewardRate: 0.5,   // クリア報酬 = cap × これ（粒）

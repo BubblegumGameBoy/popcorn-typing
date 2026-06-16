@@ -86,10 +86,9 @@ const UI = {
 
     // 入力下のボタン：1=レベル / 2=施設(高い順) / 3=品種
     this._kh(this.el.khLevel, F.fmt(game.levelCost), game.canLevelUp, false);
-    let buyIdx = -1, cheapest = Infinity;
-    for (let i = game.cfg.equipment.length - 1; i >= 0; i--) { if (buyIdx < 0 && game.popcorn >= game.equipCost(i)) buyIdx = i; }
-    for (let i = 0; i < game.cfg.equipment.length; i++) cheapest = Math.min(cheapest, game.equipCost(i));
-    this._kh(this.el.khEquip, F.fmt(buyIdx >= 0 ? game.equipCost(buyIdx) : cheapest), buyIdx >= 0, false);
+    const eqi = game.nextEquipIndex();
+    const eqCost = game.equipCost(eqi);
+    this._kh(this.el.khEquip, F.fmt(eqCost), game.popcorn >= eqCost, false);
     const nv = game.nextVariety;
     this._kh(this.el.khVariety, nv ? F.fmt(nv.cost) : '', nv ? game.popcorn >= nv.cost : false, !nv);
 

@@ -171,7 +171,7 @@ html, body {
 }
 
 /* 終盤：宇宙モード（背景を宇宙に） */
-body.space-mode #bg { filter: brightness(.35) saturate(.5) hue-rotate(8deg); }
+body.space-mode #bg { filter: brightness(.7); }
 body.space-mode #bg-overlay {
   background:
     radial-gradient(1px 1px at 20% 30%, #fff, transparent),
@@ -385,15 +385,18 @@ body.space-mode #bg-overlay {
    v2: 施設ストリップ / レベルUP / 通知移動 / チートモード
    ============================================================ */
 
-/* 施設ストリップ（白いHUDバーの中に大きく並べる。ここから粒が落ちてくる） */
+/* 施設ストリップ（白いHUDバーの中に大きく並べる。多い時は横スクロール） */
 #facility-strip {
   flex: 1; min-width: 0; margin: 0 10px;
   display: flex; align-items: center; justify-content: center;
-  gap: 10px; flex-wrap: nowrap;
+  gap: 12px; flex-wrap: nowrap; overflow-x: auto; overflow-y: visible;
+  padding: 6px 4px; scrollbar-width: thin;
 }
+#facility-strip::-webkit-scrollbar { height: 6px; }
+#facility-strip::-webkit-scrollbar-thumb { background: var(--butter); border-radius: 999px; }
 .fac {
-  position: relative; flex: 0 0 auto; width: 58px; height: 58px;
-  background: #fff; border: 2px solid var(--butter); border-radius: 12px;
+  position: relative; flex: 0 0 auto; width: 80px; height: 80px;
+  background: #fff; border: 2px solid var(--butter); border-radius: 14px;
   box-shadow: 0 2px 6px rgba(120,80,30,.18);
   animation: fac-in .35s cubic-bezier(.2,1.5,.4,1);
 }
@@ -459,3 +462,10 @@ body.space-mode #bg-overlay {
 .cheat-card p { color: var(--ink-soft); font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
 .cheat-card b { color: var(--caramel); }
 .cheat-buttons { display: flex; gap: 12px; justify-content: center; }
+
+/* タイトルの「放置型タイピングゲーム」タグ */
+.game-tag {
+  display: inline-block; background: var(--butter); color: var(--ink);
+  font-weight: 800; font-size: 13px; padding: 4px 14px; border-radius: 999px;
+  margin-bottom: 10px; border: 2px solid #fff;
+}

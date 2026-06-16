@@ -148,7 +148,7 @@
       audio.play('result', 1.4, 0.65);
       UI.flashKeyHint('1', true);
       UI.bumpCorn();
-      fireworksAcross(3, 6, cornKey(), 1.8);
+      fireworksAcross(10, 10, cornKey(), 2.2);   // ど派手に破裂
       UI.toast(`⭐ レベル ${game.level}！ 粒が増えた`, { good: true });
     } else {
       audio.play('pop1', 0.5, 0.3);
@@ -157,13 +157,15 @@
     }
   }
   function doBuyFacility() {
-    const r = game.buyBestEquip();   // コスト高い順に1個だけ購入
+    const r = game.buyNextEquip();   // 安い未所持を優先（全種そろったら高い順）
     if (r) {
       audio.play('pop1', 0.85, 0.45);
+      audio.play('metal', 1.0, 0.5);
       UI.flashKeyHint('2', true);
       UI.updateFacilities(game);
-      dropFromFacility(r.index, 10);   // その施設からポップコーンが落ちる
-      if (r.first) UI.toast(`⚙️ ${cfg.equipment[r.index].name} 設置！`, { good: true });
+      fireworksAcross(8, 9, cornKey(), 2.2);   // ど派手に破裂
+      dropFromFacility(r.index, 16);           // その施設からどっさり落ちる
+      if (r.first) UI.toast(`⚙️ ${cfg.equipment[r.index].name} 設置！`, { good: true, big: true });
     } else {
       audio.play('pop1', 0.5, 0.25);
       UI.flashKeyHint('2', false);
@@ -175,8 +177,8 @@
       UI.setCornSprite(cornKey());
       audio.play('result', 1.2, 0.6);
       UI.flashKeyHint('3', true);
-      fireworksAcross(5, 7, cornKey(), 2.0);
-      UI.toast(`🌽 ${game.variety.name} を研究！`, { good: true, big: true });
+      fireworksAcross(12, 10, cornKey(), 2.5);  // 品種は特にど派手に
+      UI.toast(`🌽 ${game.variety.name}！ 1打鍵 ${FORMAT.fmt(game.variety.perChar)}粒に！`, { good: true, big: true });
     } else {
       audio.play('pop1', 0.5, 0.25);
       UI.flashKeyHint('3', false);

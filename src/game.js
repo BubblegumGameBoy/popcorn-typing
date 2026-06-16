@@ -153,6 +153,39 @@ class Game {
     return null;
   }
 
+  /** 施設購入ボタン用：まだ持っていない設備を「安い順」に優先。全種そろったら高い順。 */
+  buyNextEquip() {
+    let target = -1, cheapest = Infinity;
+    for (let i = 0; i < this.cfg.equipment.length; i++) {
+      if (this.equip[i] === 0) {
+        const c = this.equipCost(i);
+        if (this.popcorn >= c && c < cheapest) { cheapest = c; target = i; }
+      }
+    }
+    if (target < 0) {                       // 全種所持 → 高い順に増強
+      for (let i = this.cfg.equipment.length - 1; i >= 0; i--) {
+        if (this.popcorn >= this.equipCost(i)) { target = i; break; }
+      }
+    }
+    if (target < 0) return null;
+    const first = this.equip[target] === 0;
+    this.buyEquip(target);
+    return { index: target, first };
+  }
+
+  /** 次に施設購入で買う設備の index（予測。コスト表示用）。買えない時は -1。 */
+  nextEquipIndex() {
+    let target = -1, cheapest = Infinity;
+    for (let i = 0; i < this.cfg.equipment.length; i++) {
+      if (this.equip[i] === 0) { const c = this.equipCost(i); if (c < cheapest) { cheapest = c; target = i; } }
+    }
+    if (target >= 0) return target;          // 未所持の最安（買えなくても目標として表示）
+    for (let i = this.cfg.equipment.length - 1; i >= 0; i--) {
+      if (this.popcorn >= this.equipCost(i)) return i;
+    }
+    return this.cfg.equipment.length - 1;
+  }
+
   /** 自動購入：レベルアップ用に levelCost を残し、余りで品種→高い設備の順に強化。
       新規に設置した設備の index 配列を返す（演出用）。 */
   autoBuy() {
