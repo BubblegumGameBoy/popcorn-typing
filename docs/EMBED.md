@@ -33,8 +33,8 @@
 > ★全画面は **ゲーム画面 右上の「⛶」ボタン** から（ゲーム内＝github側のJSで動くので、はてなのスクリプト除去の影響を受けません）。
 > はてなブログは記事本文の `onclick` 等のJSを消すので、**外側のボタンにJSは入れません**。
 >
-> 戦略メモ：**ゲーム本体(github.io)には広告を入れない**（iframeで読み込まれ、はてな上で二重表示＝AdSense規約リスク）。
-> 収益もエンゲージも**はてな記事ページに集約**。`allowfullscreen` を付けておけば、ゲーム内⛶ボタンで**iframeごと全画面**になり、はてなに留まれます。
+> 戦略：**埋め込み一本で最適化**（別タブ誘導なし／ゲーム内に広告なし）。収益もエンゲージも**はてな記事ページに集約**。
+> 埋め込み時はゲーム内の全画面ボタンも自動で非表示になります（はてなのiframeでは全画面APIが効かないため）。
 
 ```html
 <!-- 🍿 ポップコーンタイピング 埋め込み -->
@@ -44,19 +44,16 @@
     <h3 style="font-size:24px;color:#e8534e;margin:0 0 8px;">🍿 ポップコーンタイピング</h3>
     <p style="font-size:14px;color:#8a6a45;margin:0 0 10px;line-height:1.7;">
       打って弾けさせて、容器をいっぱいに！<br>放置している間も焼けて、どんどん増えるよ🍿<br>
-      <span style="font-size:12px;">（PC・キーボード推奨。画面を1回クリックしてから打ってね／大きく遊ぶなら右上の ⛶ ボタン）</span>
+      <span style="font-size:12px;">（PC・キーボード推奨。ゲーム画面を1回クリックしてから打ってね）</span>
     </p>
     <div style="position:relative;width:100%;padding-top:64%;border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(120,80,30,.25);">
       <iframe src="https://bubblegumgameboy.github.io/popcorn-typing/" title="ポップコーンタイピング"
-        loading="lazy" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer"
+        loading="lazy" allow="autoplay" referrerpolicy="no-referrer"
         style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>
     </div>
   </div>
 </div>
 ```
-
-> 全画面は **ゲーム右上の ⛶ ボタン**。許可されていれば その場で全画面、ダメな環境では自動で別タブで開きます。
-> ★その場で全画面にしたいなら、貼り付け後の公開HTMLで iframe に **`allowfullscreen`** が残っているか確認（はてなが消すことがあります。消えていると別タブ動作になります）。
 
 ### 収益・SEO戦略メモ
 - **広告は iframe の"外"＝はてなページ側だけ**（既存 AdSense でOK）。github.io 側はクリーンに保つ。
