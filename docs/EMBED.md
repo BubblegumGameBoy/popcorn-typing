@@ -28,10 +28,13 @@
 
 ---
 
-## ② 埋め込みHTML（レスポンシブiframe）
+## ② 埋め込みHTML（全画面ボタン版・推奨）
+
+> 戦略メモ：**ゲーム本体(github.io)には広告を入れない**（iframeで読み込まれるため、はてな上で広告が二重表示＝AdSense規約リスク）。
+> 収益もエンゲージも**はてな記事ページに集約**。大画面プレイは github 誘導ではなく **iframeを全画面化**してはてなに留めるのがベスト。
 
 ```html
-<!-- 🍿 ポップコーンタイピング 埋め込み -->
+<!-- 🍿 ポップコーンタイピング 埋め込み（全画面ボタン版） -->
 <div style="max-width:780px;margin:24px auto;font-family:'Hiragino Maru Gothic ProN',sans-serif;">
   <div style="background:#fff7e6;border:3px solid #ffd86b;border-radius:18px;padding:16px;text-align:center;box-shadow:0 8px 24px rgba(120,80,30,.18);">
     <p style="display:inline-block;background:#ffd86b;color:#5a3b1e;font-weight:bold;font-size:12px;padding:3px 12px;border-radius:999px;margin:0 0 8px;">放置型タイピングゲーム</p>
@@ -41,24 +44,26 @@
       <span style="font-size:12px;">（PC・キーボード推奨。画面を1回クリックしてから打ってね）</span>
     </p>
     <div style="position:relative;width:100%;padding-top:62.5%;border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(120,80,30,.25);">
-      <iframe src="https://bubblegumgameboy.github.io/popcorn-typing/" title="ポップコーンタイピング" loading="lazy" allow="autoplay" referrerpolicy="no-referrer"
+      <iframe id="poptype-game" src="https://bubblegumgameboy.github.io/popcorn-typing/" title="ポップコーンタイピング"
+        loading="lazy" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer"
         style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>
     </div>
     <p style="margin:14px 0 0;">
-      <a href="https://bubblegumgameboy.github.io/popcorn-typing/" target="_blank" rel="noopener"
-         style="display:inline-block;background:#e8534e;color:#fff;font-weight:bold;text-decoration:none;padding:11px 26px;border-radius:999px;box-shadow:0 4px 0 #c43c37;">
-        ▶ 別タブで大きく遊ぶ
-      </a>
+      <button type="button"
+        onclick="var f=document.getElementById('poptype-game');(f.requestFullscreen||f.webkitRequestFullscreen||f.msRequestFullscreen).call(f);"
+        style="cursor:pointer;background:#e8534e;color:#fff;font-weight:bold;border:0;padding:11px 26px;border-radius:999px;box-shadow:0 4px 0 #c43c37;">
+        ⛶ 全画面で遊ぶ
+      </button>
     </p>
   </div>
 </div>
 ```
 
-### ポイント
-- `padding-top:62.5%` で **16:10 のレスポンシブ比率**。スマホでも崩れません。
-- キーボードゲームなので **iframe内を1回クリックしてフォーカス**してから打つ必要あり → 説明文に明記済み。
-- BGMは最初のクリック（▶スタート）で鳴り始めます（自動再生ポリシー対策）。
-- 「別タブで大きく遊ぶ」リンクも併設（スマホやiframe不可の環境のフォールバック）。
+### 収益・SEO戦略メモ
+- **広告は iframe の"外"＝はてなページ側だけ**（既存 AdSense でOK）。github.io 側はクリーンに保つ。
+- 滞在時間（エンゲージ）は **iframe を開いている間ずっと はてなページにカウント**される → 埋め込み一本でOK。github へ誘導しない。
+- おすすめ配置：紹介文 → ゲーム埋め込み → **300×250 広告（遊んだ直後）** → 遊び方・特徴テキスト（SEOボリューム）→ サイドバー広告。
+
 
 ---
 
