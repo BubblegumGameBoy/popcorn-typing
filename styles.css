@@ -525,3 +525,6 @@ body.space-mode #bg-overlay {
   #key-hints { bottom: 6px; }
   #gen-gauge { height: 44%; }
 }
+
+/* 埋め込み時は全画面ボタンを隠す（はてな等のiframeでは全画面APIが効かないため） */
+html.embedded #fs-btn { display: none; }
