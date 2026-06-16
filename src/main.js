@@ -20,9 +20,7 @@
   audio.loadSE('pop2', ASSETS.audioUrl('pop2'));
   audio.loadSE('metal', ASSETS.audioUrl('popMetal'));
   audio.loadSE('result', ASSETS.audioUrl('result'));
-  audio.loadBGM('bgmEarly', ASSETS.audioUrl('bgmEarly'));
-  audio.loadBGM('bgmMid', ASSETS.audioUrl('bgmMid'));
-  audio.loadBGM('bgmSpace', ASSETS.audioUrl('bgmSpace'));
+  for (const k of ['bgm1', 'bgm2', 'bgm3', 'bgm4', 'bgm5', 'bgm6']) audio.loadBGM(k, ASSETS.audioUrl(k));
 
   UI.init(cfg);
   const canvas = document.getElementById('fx-canvas');

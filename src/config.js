@@ -106,10 +106,14 @@ const CONFIG = {
 
   // ── フェーズ（容器の進み具合で背景＆BGMを切り替え） ──────
   //   container index が until 未満ならそのフェーズ。
+  //   6曲ぜんぶ使う。容器の進み具合（index）で背景＆BGMを切替。
   phases: [
-    { until: 5,        bg: 'park',  bgm: 'bgmEarly', space: false },
-    { until: 11,       bg: 'town',  bgm: 'bgmMid',   space: false },
-    { until: Infinity, bg: 'space', bgm: 'bgmSpace', space: true  },
+    { until: 2,        bg: 'park',  bgm: 'bgm1', space: false }, // popでかわいいダンス曲
+    { until: 5,        bg: 'park',  bgm: 'bgm2', space: false }, // ぴょこぴょこダンス
+    { until: 8,        bg: 'town',  bgm: 'bgm3', space: false }, // Funky_droll_street
+    { until: 10,       bg: 'town',  bgm: 'bgm4', space: false }, // Miniature_house_2
+    { until: 11,       bg: 'town',  bgm: 'bgm5', space: false }, // ユメイロドロップス
+    { until: Infinity, bg: 'space', bgm: 'bgm6', space: true  }, // Poppin'_Heart（ボーカル）
   ],
 
   // ── オフライン生産 ──────────────────────────────────
