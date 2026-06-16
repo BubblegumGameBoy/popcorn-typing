@@ -256,6 +256,17 @@
       const muted = audio.toggleMute();
       e.target.textContent = muted ? '🔇' : '🔊';
     });
+    // 全画面（埋め込みでも iframe ごと全画面に。allowfullscreen が要る）
+    document.getElementById('fs-btn').addEventListener('click', () => {
+      const d = document, el = d.documentElement;
+      try {
+        if (!d.fullscreenElement && !d.webkitFullscreenElement) {
+          (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el);
+        } else {
+          (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+        }
+      } catch (e) {}
+    });
     // チートモーダル
     document.getElementById('cheat-yes').addEventListener('click', () => {
       game.startCheatRun();

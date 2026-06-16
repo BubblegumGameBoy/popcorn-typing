@@ -382,8 +382,8 @@ body.space-mode #bg-overlay {
   #hud-corn-icon { width: 38px; height: 38px; }
   .hud-counts #popcorn-count { font-size: 26px; }
   #cps-line { font-size: 11px; }
-  #facility-strip { gap: 7px; margin: 0 4px; order: 3; flex-basis: 100%; justify-content: flex-start; }
-  .fac { width: 52px; height: 52px; }
+  #facility-strip { gap: 6px; margin: 0 6px; justify-content: flex-start; }
+  .fac { width: 46px; height: 46px; }
   .hud-stats { gap: 10px; }
   .stat span:last-child { font-size: 16px; }
   #typing-panel { min-width: 0; width: 92%; max-width: 520px; padding: 14px 20px; }
@@ -395,8 +395,9 @@ body.space-mode #bg-overlay {
   #gen-gauge { width: 34px; height: 50%; left: 6px; }
   #gen-spark { font-size: 14px; }
   #gen-label { font-size: 9px; }
-  #key-hints { bottom: 8px; gap: 6px; flex-wrap: wrap; justify-content: center; }
-  .key-hint { padding: 7px 10px; }
+  #key-hints { bottom: 8px; gap: 6px; flex-wrap: nowrap; justify-content: center; }
+  .key-hint { padding: 6px 9px; gap: 5px; }
+  .key-hint kbd { padding: 2px 7px; font-size: 13px; }
   .key-hint .kh-name { font-size: 11px; }
   .key-hint .kh-cost { font-size: 11px; }
   .game-title { font-size: 42px; }
@@ -504,4 +505,22 @@ body.space-mode #bg-overlay {
   display: inline-block; background: var(--butter); color: var(--ink);
   font-weight: 800; font-size: 13px; padding: 4px 14px; border-radius: 999px;
   margin-bottom: 10px; border: 2px solid #fff;
+}
+
+/* 低い/埋め込み画面で要素が重ならないようコンパクト化 */
+@media (max-height: 560px) {
+  #container-wrap { margin-bottom: 4px; }
+  #container-box { width: 64px; height: 78px; }
+  #container-name { font-size: 14px; margin-bottom: 2px; }
+  #container-amount { font-size: 11px; margin-top: 2px; }
+  #container-bar { margin-top: 2px; height: 6px; }
+  #combo-badge { top: 6px; padding: 3px 12px; }
+  #combo-num { font-size: 18px; }
+  #combo-badge .combo-x { font-size: 10px; }
+  #combo-mult { font-size: 16px; }
+  #typing-panel { padding: 8px 16px; }
+  #word-display { font-size: clamp(18px,5vw,26px); margin: 2px 0 4px; }
+  #romaji-guide { font-size: clamp(14px,3.5vw,19px); }
+  #key-hints { bottom: 6px; }
+  #gen-gauge { height: 44%; }
 }

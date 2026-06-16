@@ -28,32 +28,31 @@
 
 ---
 
-## ② 埋め込みHTML（全画面ボタン版・推奨）
+## ② 埋め込みHTML（はてな対応・推奨）
 
-> 戦略メモ：**ゲーム本体(github.io)には広告を入れない**（iframeで読み込まれるため、はてな上で広告が二重表示＝AdSense規約リスク）。
-> 収益もエンゲージも**はてな記事ページに集約**。大画面プレイは github 誘導ではなく **iframeを全画面化**してはてなに留めるのがベスト。
+> ★全画面は **ゲーム画面 右上の「⛶」ボタン** から（ゲーム内＝github側のJSで動くので、はてなのスクリプト除去の影響を受けません）。
+> はてなブログは記事本文の `onclick` 等のJSを消すので、**外側のボタンにJSは入れません**。
+>
+> 戦略メモ：**ゲーム本体(github.io)には広告を入れない**（iframeで読み込まれ、はてな上で二重表示＝AdSense規約リスク）。
+> 収益もエンゲージも**はてな記事ページに集約**。`allowfullscreen` を付けておけば、ゲーム内⛶ボタンで**iframeごと全画面**になり、はてなに留まれます。
 
 ```html
-<!-- 🍿 ポップコーンタイピング 埋め込み（全画面ボタン版） -->
+<!-- 🍿 ポップコーンタイピング 埋め込み -->
 <div style="max-width:780px;margin:24px auto;font-family:'Hiragino Maru Gothic ProN',sans-serif;">
   <div style="background:#fff7e6;border:3px solid #ffd86b;border-radius:18px;padding:16px;text-align:center;box-shadow:0 8px 24px rgba(120,80,30,.18);">
     <p style="display:inline-block;background:#ffd86b;color:#5a3b1e;font-weight:bold;font-size:12px;padding:3px 12px;border-radius:999px;margin:0 0 8px;">放置型タイピングゲーム</p>
     <h3 style="font-size:24px;color:#e8534e;margin:0 0 8px;">🍿 ポップコーンタイピング</h3>
-    <p style="font-size:14px;color:#8a6a45;margin:0 0 12px;line-height:1.7;">
+    <p style="font-size:14px;color:#8a6a45;margin:0 0 10px;line-height:1.7;">
       打って弾けさせて、容器をいっぱいに！<br>放置している間も焼けて、どんどん増えるよ🍿<br>
-      <span style="font-size:12px;">（PC・キーボード推奨。画面を1回クリックしてから打ってね）</span>
+      <span style="font-size:12px;">（PC・キーボード推奨。画面を1回クリックしてから打ってね／大きく遊ぶなら右上の ⛶ ボタン）</span>
     </p>
-    <div style="position:relative;width:100%;padding-top:62.5%;border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(120,80,30,.25);">
-      <iframe id="poptype-game" src="https://bubblegumgameboy.github.io/popcorn-typing/" title="ポップコーンタイピング"
+    <div style="position:relative;width:100%;padding-top:64%;border-radius:12px;overflow:hidden;box-shadow:0 6px 18px rgba(120,80,30,.25);">
+      <iframe src="https://bubblegumgameboy.github.io/popcorn-typing/" title="ポップコーンタイピング"
         loading="lazy" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer"
         style="position:absolute;inset:0;width:100%;height:100%;border:0;"></iframe>
     </div>
-    <p style="margin:14px 0 0;">
-      <button type="button"
-        onclick="var f=document.getElementById('poptype-game');(f.requestFullscreen||f.webkitRequestFullscreen||f.msRequestFullscreen).call(f);"
-        style="cursor:pointer;background:#e8534e;color:#fff;font-weight:bold;border:0;padding:11px 26px;border-radius:999px;box-shadow:0 4px 0 #c43c37;">
-        ⛶ 全画面で遊ぶ
-      </button>
+    <p style="margin:10px 0 0;font-size:12px;color:#8a6a45;">
+      うまく表示されない時は <a href="https://bubblegumgameboy.github.io/popcorn-typing/" target="_blank" rel="noopener" style="color:#e8534e;">こちら（別タブ）</a>
     </p>
   </div>
 </div>
