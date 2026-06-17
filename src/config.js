@@ -77,17 +77,17 @@ const CONFIG = {
   //   リスト終端を超えたら capを ×growthBeyond し続ける（無限）。
   //   space:true の容器から背景が宇宙に。
   containers: [
-    { name: 'Sカップ',        cap: 300 },
-    { name: 'Mカップ',        cap: 1500 },
-    { name: 'Lカップ',        cap: 9000 },
-    { name: 'メガバケツ',      cap: 50000 },
-    { name: '一斗缶',         cap: 300000 },
-    { name: '屋台ワゴン',      cap: 1e6 },
-    { name: 'ダンプトラック',  cap: 4e6 },
+    { name: 'Sカップ',        cap: 500 },
+    { name: 'Mカップ',        cap: 3000 },
+    { name: 'Lカップ',        cap: 18000 },
+    { name: 'メガバケツ',      cap: 90000 },
+    { name: '一斗缶',         cap: 400000 },
+    { name: '屋台ワゴン',      cap: 1.5e6 },
+    { name: 'ダンプトラック',  cap: 5e6 },
     { name: 'ビルまるごと',    cap: 1.5e7 },
-    { name: '大きな山',       cap: 5e7 },
-    { name: '街ぜんぶ',       cap: 1.5e8 },
-    { name: '日本列島',       cap: 5e8 },
+    { name: '大きな山',       cap: 3.5e7 },
+    { name: '街ぜんぶ',       cap: 1e8 },
+    { name: '日本列島',       cap: 4e8 },
     { name: '地球',          cap: 1e9,   space: true },
     { name: '月もいっしょに',  cap: 4e9,   space: true },
     { name: '太陽系',         cap: 2e10,  space: true },
@@ -111,9 +111,9 @@ const CONFIG = {
   //   6曲ぜんぶ使う。容器の進み具合（index）で背景＆BGMを切替。
   //   背景：遊園地 → 遊園地レベル2 → 遊園地レベル3 → ポップコーンタウン → ポップコーンワールド(宇宙)
   phases: [
-    { until: 2,        bg: 'park',  bgm: 'bgm1', space: false }, // 遊園地
-    { until: 4,        bg: 'park2', bgm: 'bgm2', space: false }, // 遊園地レベル2
-    { until: 6,        bg: 'park3', bgm: 'bgm3', space: false }, // 遊園地レベル3
+    { until: 3,        bg: 'park',  bgm: 'bgm1', space: false }, // 遊園地（少し長め）
+    { until: 5,        bg: 'park2', bgm: 'bgm2', space: false }, // 遊園地レベル2
+    { until: 7,        bg: 'park3', bgm: 'bgm3', space: false }, // 遊園地レベル3
     { until: 9,        bg: 'town',  bgm: 'bgm4', space: false }, // ポップコーンタウン
     { until: 11,       bg: 'town',  bgm: 'bgm5', space: false }, // タウン（曲だけ変化）
     { until: Infinity, bg: 'space', bgm: 'bgm6', space: true  }, // ポップコーンワールド（宇宙）
