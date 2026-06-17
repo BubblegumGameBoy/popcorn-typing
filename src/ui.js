@@ -90,7 +90,8 @@ const UI = {
     const eqCost = game.equipCost(eqi);
     this._kh(this.el.khEquip, F.fmt(eqCost), game.popcorn >= eqCost, false);
     const nv = game.nextVariety;
-    this._kh(this.el.khVariety, nv ? F.fmt(nv.cost) : '', nv ? game.popcorn >= nv.cost : false, !nv);
+    if (nv) this._kh(this.el.khVariety, F.fmt(nv.cost), game.popcorn >= nv.cost, false);
+    else this._kh(this.el.khVariety, F.fmt(game.goldLevelCost), game.popcorn >= game.goldLevelCost, false); // 純金レベル研究（天井なし）
 
     this.updateFacilities(game);
     this.updateContainer(game);

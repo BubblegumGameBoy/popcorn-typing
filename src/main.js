@@ -31,7 +31,8 @@
   let current = null, currentWord = null;
   function nextWord() {
     const maxDiff = Math.min(3, 1 + game.varietyIndex);
-    currentWord = WordBank.random(maxDiff);
+    const minDiff = game.isGold ? 2 : 1;   // 純金到達後は短すぎる語を出さない（反復対策）
+    currentWord = WordBank.random(maxDiff, minDiff);
     current = new TypingWord(currentWord.kana);
     UI.setWord(currentWord.text);
     UI.setProgress('', current.left);
@@ -171,15 +172,23 @@
     }
   }
   function doBuyVariety() {
-    if (game.nextVariety && game.buyVariety()) {
-      UI.setCornSprite(cornKey());
-      audio.play('result', 1.2, 0.6);
-      UI.flashKeyHint('3', true);
-      fireworksAcross(12, 10, cornKey(), 2.5);  // 品種は特にど派手に
-      UI.toast(`🌽 ${game.variety.name}！ 1打鍵 ${FORMAT.fmt(game.variety.perChar)}粒に！`, { good: true, big: true });
+    if (game.nextVariety) {
+      // 次の品種を研究
+      if (game.buyVariety()) {
+        UI.setCornSprite(cornKey());
+        audio.play('result', 1.2, 0.6);
+        UI.flashKeyHint('3', true);
+        fireworksAcross(12, 10, cornKey(), 2.5);
+        UI.toast(`🌽 ${game.variety.name}！ 1打鍵 ${FORMAT.fmt(game.varietyPerChar)}粒に！`, { good: true, big: true });
+      } else { audio.play('pop1', 0.5, 0.25); UI.flashKeyHint('3', false); }
     } else {
-      audio.play('pop1', 0.5, 0.25);
-      UI.flashKeyHint('3', false);
+      // 純金コーンは天井なし → レベル研究
+      if (game.buyGoldLevel()) {
+        audio.play('result', 1.25, 0.65);
+        UI.flashKeyHint('3', true);
+        fireworksAcross(14, 11, 'gold', 2.6);
+        UI.toast(`🏆 純金コーン Lv${game.goldLevel + 1}！ 1打鍵 ${FORMAT.fmt(game.varietyPerChar)}粒に！`, { good: true, big: true });
+      } else { audio.play('pop1', 0.5, 0.25); UI.flashKeyHint('3', false); }
     }
   }
 

@@ -20,6 +20,7 @@ class Game {
     this.popcorn = 0;             // 所持
     this.totalRun = 0;            // この周回の総生産
     this.varietyIndex = 0;        // 現在の品種（解放済みの最高位）
+    this.goldLevel = 0;           // 純金コーンの追加レベル（天井なし）
     this.equip = this.cfg.equipment.map(() => 0);  // 各設備の所有数
     this.level = 1;               // タイピングレベル（手入力の主軸）
     this.combo = 0;               // 連続ノーミス
@@ -47,9 +48,29 @@ class Game {
     return m;
   }
 
-  /** 1打鍵の基礎（品種 × レベル × 塩）。コンボ前。 */
+  /** 現在の品種の1打鍵あたり（純金は goldLevel ぶん倍増） */
+  get varietyPerChar() {
+    let p = this.variety.perChar;
+    if (this.isGold && this.goldLevel > 0) p *= Math.pow(this.cfg.goldUpgrade.factor, this.goldLevel);
+    return p;
+  }
+  get isGold() { return this.varietyIndex === this.cfg.varieties.length - 1; }
+
+  /** 純金の次レベルの研究費用 */
+  get goldLevelCost() {
+    const g = this.cfg.goldUpgrade;
+    return Math.floor(g.costBase * Math.pow(g.costGrowth, this.goldLevel));
+  }
+  buyGoldLevel() {
+    if (!this.isGold || this.popcorn < this.goldLevelCost) return false;
+    this.popcorn -= this.goldLevelCost;
+    this.goldLevel++;
+    return true;
+  }
+
+  /** 1打鍵の基礎（品種 × レベル × 倍率）。コンボ前。 */
   get baseOutput() {
-    return this.variety.perChar * this.level * this.globalMult;
+    return this.varietyPerChar * this.level * this.globalMult;
   }
 
   /** 1打鍵の獲得粒（コンボこみ） */
@@ -284,7 +305,7 @@ class Game {
     return JSON.stringify({
       v: 1,
       popcorn: this.popcorn, totalRun: this.totalRun, totalAllTime: this.totalAllTime,
-      varietyIndex: this.varietyIndex, equip: this.equip, level: this.level,
+      varietyIndex: this.varietyIndex, goldLevel: this.goldLevel, equip: this.equip, level: this.level,
       containersCleared: this.containersCleared,
       cheatUnlocked: this.cheatUnlocked, cheatActive: this.cheatActive,
       maxCombo: this.maxCombo, wordsCleared: this.wordsCleared,
@@ -299,6 +320,7 @@ class Game {
       this.totalRun = d.totalRun || 0;
       this.totalAllTime = d.totalAllTime || 0;
       this.varietyIndex = Math.min(d.varietyIndex || 0, this.cfg.varieties.length - 1);
+      this.goldLevel = d.goldLevel || 0;
       this.equip = (d.equip && d.equip.length === this.cfg.equipment.length)
         ? d.equip.slice() : this.cfg.equipment.map(() => 0);
       this.level = d.level || 1;

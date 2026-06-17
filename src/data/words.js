@@ -154,7 +154,10 @@ function _autoDiff(w) {
   const n = w.kana.length;
   return Object.assign({ difficulty: n <= 4 ? 1 : n <= 9 ? 2 : 3 }, w);
 }
-const ALL_WORDS = WORDS.concat(BUZZWORDS.map(_autoDiff));
+// 追加お題パック（words2.js が先に読み込まれていれば合流）
+const _extra = (typeof WORDS2 !== 'undefined') ? WORDS2
+  : ((typeof window !== 'undefined' && window.WORDS2) ? window.WORDS2 : []);
+const ALL_WORDS = WORDS.concat(_extra).concat(BUZZWORDS.map(_autoDiff));
 
 // ────────────────────────────────────────────────
 //  WordBank: お題の取り出し（連続重複を避ける）
@@ -163,8 +166,9 @@ const WordBank = {
   all: ALL_WORDS,
   _last: null,
   byDifficulty(level) { return ALL_WORDS.filter(w => w.difficulty === level); },
-  random(maxDifficulty = 3) {
-    const pool = ALL_WORDS.filter(w => w.difficulty <= maxDifficulty);
+  random(maxDifficulty = 3, minDifficulty = 1) {
+    let pool = ALL_WORDS.filter(w => w.difficulty <= maxDifficulty && w.difficulty >= minDifficulty);
+    if (!pool.length) pool = ALL_WORDS.filter(w => w.difficulty <= maxDifficulty);
     let w, guard = 0;
     do { w = pool[Math.floor(Math.random() * pool.length)]; } while (w === this._last && ++guard < 8);
     this._last = w;

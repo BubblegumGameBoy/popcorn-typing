@@ -26,8 +26,10 @@ const CONFIG = {
     { id: 'normal',  name: '普通のコーン',     img: 'normal',  perChar: 1,    cost: 0,        desc: '1文字 = 1粒。すべての始まり。' },
     { id: 'caramel', name: 'キャラメルコーン', img: 'caramel', perChar: 15,   cost: 2500,     desc: '1文字 = 15粒。あまくてカリッ。' },
     { id: 'truffle', name: 'トリュフ塩コーン', img: 'truffle', perChar: 350,  cost: 300000,   desc: '1文字 = 350粒。高級な香り。' },
-    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 9000, cost: 45000000, desc: '1文字 = 9000粒。食べられるのか…？' },
+    { id: 'gold',    name: '純金のコーン',     img: 'gold',    perChar: 9000, cost: 45000000, desc: '1文字 = 9000粒。ここからは無限にレベルUP！' },
   ],
+  // 純金コーンは天井なし。研究するほど Lv が上がり、1打鍵が ×factor ずつ伸びる。
+  goldUpgrade: { factor: 2.0, costBase: 90000000, costGrowth: 2.1 },
 
   // ── レベル（タイピングで上げる。手入力がいちばん強い源泉） ──
   //   レベルが上がるほど 1打鍵の粒が増え、はじける粒の数も増える（Lv2=2個）。
@@ -107,13 +109,14 @@ const CONFIG = {
   // ── フェーズ（容器の進み具合で背景＆BGMを切り替え） ──────
   //   container index が until 未満ならそのフェーズ。
   //   6曲ぜんぶ使う。容器の進み具合（index）で背景＆BGMを切替。
+  //   背景：遊園地 → 遊園地レベル2 → 遊園地レベル3 → ポップコーンタウン → ポップコーンワールド(宇宙)
   phases: [
-    { until: 2,        bg: 'park',  bgm: 'bgm1', space: false }, // popでかわいいダンス曲
-    { until: 5,        bg: 'park',  bgm: 'bgm2', space: false }, // ぴょこぴょこダンス
-    { until: 8,        bg: 'town',  bgm: 'bgm3', space: false }, // Funky_droll_street
-    { until: 10,       bg: 'town',  bgm: 'bgm4', space: false }, // Miniature_house_2
-    { until: 11,       bg: 'town',  bgm: 'bgm5', space: false }, // ユメイロドロップス
-    { until: Infinity, bg: 'space', bgm: 'bgm6', space: true  }, // Poppin'_Heart（ボーカル）
+    { until: 2,        bg: 'park',  bgm: 'bgm1', space: false }, // 遊園地
+    { until: 4,        bg: 'park2', bgm: 'bgm2', space: false }, // 遊園地レベル2
+    { until: 6,        bg: 'park3', bgm: 'bgm3', space: false }, // 遊園地レベル3
+    { until: 9,        bg: 'town',  bgm: 'bgm4', space: false }, // ポップコーンタウン
+    { until: 11,       bg: 'town',  bgm: 'bgm5', space: false }, // タウン（曲だけ変化）
+    { until: Infinity, bg: 'space', bgm: 'bgm6', space: true  }, // ポップコーンワールド（宇宙）
   ],
 
   // ── オフライン生産 ──────────────────────────────────

@@ -36,8 +36,10 @@ const IMAGES = {
   // 転生通貨
   salt: 'artifacts/塩.png',
 
-  // 背景（フェーズで切り替え）
+  // 背景（フェーズで切り替え：遊園地→Lv2→Lv3→タウン→宇宙）
   park:  'background/遊園地.png',
+  park2: 'background/遊園地 レベル2.png',
+  park3: 'background/遊園地レベル3.png',
   town:  'background/ポップコーンタウン.png',
   space: 'background/ポップコーンワールド.png',
 };
@@ -46,7 +48,7 @@ const AUDIO = {
   pop1:     'audio/se/ポンッ！.mp3',
   pop2:     'audio/se/ポンッ！_2.mp3',
   popMetal: 'audio/se/ポンッ！金属音っぽい音.mp3',
-  result:   'audio/se/結果発表.mp3',
+  result:   'audio/se/ポンッ！金属音っぽい音.mp3',   // 旧「結果発表」削除のため金属音で代用
   // BGM（フェーズで切り替え）。Poppin'_Heart はボーカル有りなので終盤に。
   bgm1: 'audio/bgm/popでかわいいダンス曲.mp3',
   bgm2: 'audio/bgm/ぴょこぴょこダンス.mp3',
