@@ -297,7 +297,6 @@
       UI.toast('😈 チートモード！ ポップコーン ×100 でスタート！', { good: true, big: true });
       audio.play('result', 1.1, 0.9);
     });
-    document.getElementById('cheat-no').addEventListener('click', () => UI.hideCheatModal());
 
     audio.unlock();
     requestAnimationFrame(loop);
