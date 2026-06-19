@@ -20,6 +20,7 @@
   audio.loadSE('pop2', ASSETS.audioUrl('pop2'));
   audio.loadSE('metal', ASSETS.audioUrl('popMetal'));
   audio.loadSE('result', ASSETS.audioUrl('result'));
+  audio.loadSE('complete', ASSETS.audioUrl('complete'));
   for (const k of ['bgm1', 'bgm2', 'bgm3', 'bgm4', 'bgm5', 'bgm6']) audio.loadBGM(k, ASSETS.audioUrl(k));
 
   UI.init(cfg);
@@ -33,7 +34,9 @@
     const maxDiff = Math.min(3, 1 + game.varietyIndex);
     const minDiff = game.isGold ? 2 : 1;   // 純金到達後は短すぎる語を出さない（反復対策）
     currentWord = WordBank.random(maxDiff, minDiff);
-    current = new TypingWord(currentWord.kana);
+    // 文節区切り（空白入り）があればそれで打鍵（空白はゼロ幅の表示区切り）
+    const typeKana = (window.SPACING && window.SPACING[currentWord.kana]) || currentWord.kana;
+    current = new TypingWord(typeKana);
     UI.setWord(currentWord.text);
     UI.setProgress('', current.left);
   }
@@ -128,6 +131,7 @@
     }
     if (r.status === 'complete') {
       game.completeWord(currentWord.kana.length);
+      audio.play('complete', 1.0, 0.7);   // パンッ＋キラン✨（ワード完成の特別音）
       fireworksAcross(1, 4, cornKey(), 1.4);
       nextWord();
     }

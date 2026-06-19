@@ -77,13 +77,16 @@ function kanaUnits(kana) {
   }
   // 各単位を許容ローマ字配列へ。促音「っ」は次単位に畳み込む
   const out = [];
+  const nPos = [];             // 「ん」単位の位置（後で文脈判定）
   let dbl = false;
   let lastVowel = '';          // 直前の単位の母音（長音「ー」用）
   for (const u of raw) {
     if (u === 'っ') { dbl = true; continue; }
 
+    // 空白：ゼロ幅の区切り（打鍵不要・表示だけ）
+    if (u === ' ') { out.push([' ']); dbl = false; continue; }
+
     // 長音「ー」：ハイフン「-」でも、直前の母音をのばす綴りでも受理
-    //   例: ばたー → "bata-" でも "bataa" でもOK
     if (u === 'ー') {
       const vars = ['-'];
       if (lastVowel) vars.push(lastVowel);
@@ -91,6 +94,9 @@ function kanaUnits(kana) {
       dbl = false;
       continue;            // lastVowel は維持（連続「ー」にも対応）
     }
+
+    // 「ん」：表記は文脈で決める（後処理）。ひとまず両綴りを入れておく
+    if (u === 'ん') { out.push(['nn', 'n']); nPos.push(out.length - 1); dbl = false; continue; }
 
     let vars = (KANA_ROMA[u] || [u]).slice();
     if (dbl) {
@@ -106,6 +112,17 @@ function kanaUnits(kana) {
     const last = vars[0][vars[0].length - 1];
     if ('aiueo'.includes(last)) lastVowel = last;
   }
+
+  // 「ん」の表示綴りを文脈で決定（自然なローマ字に）：
+  //   次が 母音(aiueo) か や行(y) のときだけ "nn"（単一nだと きんいろ/ほんや が曖昧になるため）
+  //   それ以外（子音・な行・語末）→ "n" を表示。どちらの綴りも常に受理する。
+  for (const k of nPos) {
+    let j = k + 1;
+    while (j < out.length && out[j][0] === ' ') j++;   // 空白は飛ばす
+    const nf = (j < out.length) ? out[j][0][0] : null;
+    const needsDouble = nf !== null && 'aiueoy'.includes(nf);
+    out[k] = needsDouble ? ['nn', 'n'] : ['n', 'nn'];
+  }
   return out;
 }
 
@@ -117,6 +134,7 @@ function kanaUnits(kana) {
 // ────────────────────────────────────────────────
 function kanaMatch(units, input) {
   function rec(ui, si) {
+    while (ui < units.length && units[ui][0] === ' ') ui++;   // 空白はゼロ幅で飛ばす
     if (si === input.length) return ui === units.length ? 'complete' : 'partial';
     if (ui === units.length) return 'no';
     let res = 'no';
@@ -172,6 +190,32 @@ function kanaDisplay(units, input) {
   return rem === null ? '' : rem;
 }
 
+// ────────────────────────────────────────────────
+// 4b. 入力に沿って done（打った分）/ left（残り）を空白入りで構築
+//     空白単位は表示だけ（打鍵不要）。done 側にも通過した空白を残す。
+// ────────────────────────────────────────────────
+function kanaRender(units, input) {
+  let done = '', left = '', si = 0, finished = false;
+  for (let ui = 0; ui < units.length; ui++) {
+    const u = units[ui];
+    if (u[0] === ' ') { if (finished) left += ' '; else done += ' '; continue; }
+    if (finished) { left += u[0]; continue; }
+    // この単位を input がちょうど消費できるか（長い綴り優先：nn>n, shi>si など）
+    let matched = null;
+    const sorted = u.slice().sort((a, b) => b.length - a.length);
+    for (const v of sorted) { if (v && input.startsWith(v, si)) { matched = v; break; } }
+    if (matched !== null) { done += matched; si += matched.length; continue; }
+    // 途中まで打っている → その綴りの残りを left に
+    const part = input.slice(si);
+    let chosen = null;
+    for (const v of u) { if (v.startsWith(part)) { chosen = v; break; } }
+    if (chosen !== null) { done += part; left += chosen.slice(part.length); }
+    else { left += u[0]; }
+    finished = true;
+  }
+  return { done, left };
+}
+
 
 // ────────────────────────────────────────────────
 // 5. ワード単位のラッパー（任意・便利クラス）
@@ -196,21 +240,22 @@ class TypingWord {
     const next = this.input + ch.toLowerCase();
     const st = kanaMatch(this.units, next);
     if (st === 'no') {
-      return { status: 'reject', done: this.input, left: kanaDisplay(this.units, this.input) };
+      const r = kanaRender(this.units, this.input);
+      return { status: 'reject', done: r.done, left: r.left };
     }
     this.input = next;
-    if (st === 'complete') {
-      return { status: 'complete', done: this.input, left: '' };
-    }
-    return { status: 'progress', done: this.input, left: kanaDisplay(this.units, this.input) };
+    const r = kanaRender(this.units, this.input);
+    if (st === 'complete') return { status: 'complete', done: r.done, left: '' };
+    return { status: 'progress', done: r.done, left: r.left };
   }
   /** バックスペース1文字 */
   backspace() {
     this.input = this.input.slice(0, -1);
-    return { status: 'progress', done: this.input, left: kanaDisplay(this.units, this.input) };
+    const r = kanaRender(this.units, this.input);
+    return { status: 'progress', done: r.done, left: r.left };
   }
-  get done()    { return this.input; }
-  get left()    { return kanaDisplay(this.units, this.input); }
+  get done()    { return kanaRender(this.units, this.input).done; }
+  get left()    { return kanaRender(this.units, this.input).left; }
   get isDone()  { return kanaMatch(this.units, this.input) === 'complete'; }
 }
 
@@ -269,5 +314,5 @@ function attachKeyInput({ onChar, onBackspace, onEnter, onEscape, onDigit, isAct
 
 // Node / バンドラ用エクスポート（ブラウザ直読みなら無視される）
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { KANA_ROMA, kanaUnits, kanaMatch, kanaDisplay, TypingWord, attachKeyInput };
+  module.exports = { KANA_ROMA, kanaUnits, kanaMatch, kanaDisplay, kanaRender, TypingWord, attachKeyInput };
 }
