@@ -121,7 +121,9 @@ function kanaUnits(kana) {
     while (j < out.length && out[j][0] === ' ') j++;   // 空白は飛ばす
     const nf = (j < out.length) ? out[j][0][0] : null;
     const needsDouble = nf !== null && 'aiueoy'.includes(nf);
-    out[k] = needsDouble ? ['nn', 'n'] : ['n', 'nn'];
+    //   母音・や行の前は "n" 単独だと別音（きに/ほにゃ）と区別できないため "nn" 必須。
+    //   それ以外（子音・な行・語末）は "n" を表示し、n / nn どちらも受理。
+    out[k] = needsDouble ? ['nn'] : ['n', 'nn'];
   }
   return out;
 }
@@ -195,23 +197,43 @@ function kanaDisplay(units, input) {
 //     空白単位は表示だけ（打鍵不要）。done 側にも通過した空白を残す。
 // ────────────────────────────────────────────────
 function kanaRender(units, input) {
-  let done = '', left = '', si = 0, finished = false;
+  // input を「実際に打った綴り」でunits全体に割り付ける（バックトラック）。
+  //   ★赤い動線（done）が打鍵を正しく追尾する肝★
+  //   各単位は綴り配列の「自然な順（先頭=お手本）」で試す。長さ優先の貪欲だと
+  //   みんな="minna"を打っても ん を nn に食ってしまい "minnna" とズレるため。
+  //   全消費できたら以降は left にお手本綴り(u[0])を並べる。
+  const acc = {};          // ui -> 消費した綴り（完全消費した単位）
+  let sol = null;          // { upto, pUnit, pTyped, pFull }
+  function rec(ui, si) {
+    while (ui < units.length && units[ui][0] === ' ') ui++;   // 空白はゼロ幅で飛ばす
+    if (si === input.length) { sol = { upto: ui, pUnit: -1, pTyped: '', pFull: '' }; return true; }
+    if (ui === units.length) return false;
+    // 1単位ぶんちょうど消費（自然順＝先頭綴りから）
+    for (const v of units[ui]) {
+      if (v && input.startsWith(v, si)) {
+        acc[ui] = v;
+        if (rec(ui + 1, si + v.length)) return true;
+        delete acc[ui];
+      }
+    }
+    // 単位の途中まで打っている（ここが最後の消費単位）
+    const part = input.slice(si);
+    for (const v of units[ui]) {
+      if (v && v !== part && v.startsWith(part)) {
+        sol = { upto: ui, pUnit: ui, pTyped: part, pFull: v };
+        return true;
+      }
+    }
+    return false;
+  }
+  if (!rec(0, 0)) sol = { upto: 0, pUnit: -1, pTyped: '', pFull: '' };  // 念のため（通常到達せず）
+  // done / left を空白入りで組み立てる
+  let done = '', left = '';
   for (let ui = 0; ui < units.length; ui++) {
     const u = units[ui];
-    if (u[0] === ' ') { if (finished) left += ' '; else done += ' '; continue; }
-    if (finished) { left += u[0]; continue; }
-    // この単位を input がちょうど消費できるか（長い綴り優先：nn>n, shi>si など）
-    let matched = null;
-    const sorted = u.slice().sort((a, b) => b.length - a.length);
-    for (const v of sorted) { if (v && input.startsWith(v, si)) { matched = v; break; } }
-    if (matched !== null) { done += matched; si += matched.length; continue; }
-    // 途中まで打っている → その綴りの残りを left に
-    const part = input.slice(si);
-    let chosen = null;
-    for (const v of u) { if (v.startsWith(part)) { chosen = v; break; } }
-    if (chosen !== null) { done += part; left += chosen.slice(part.length); }
-    else { left += u[0]; }
-    finished = true;
+    if (ui < sol.upto)        { done += (u[0] === ' ') ? ' ' : (acc[ui] || u[0]); }
+    else if (ui === sol.pUnit){ done += sol.pTyped; left += sol.pFull.slice(sol.pTyped.length); }
+    else                      { left += (u[0] === ' ') ? ' ' : u[0]; }
   }
   return { done, left };
 }
