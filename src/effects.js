@@ -208,7 +208,7 @@ class AudioKit {
     this.bgmUrls = {};     // key -> url
     this.bgmKey = null;    // いま鳴らしているトラック
     this.bgmVol = 0.32;
-    this.poolSize = 6;
+    this.poolSize = 10;
     this.unlocked = false;
     this.XFADE = 1.4;      // クロスフェード秒
     // 現トラックは2枚使い（a/b）。末尾で重ねてループの繋ぎ目を消す。
@@ -305,14 +305,27 @@ class AudioKit {
     if (this.muted) return;
     const pool = this.sePool[key];
     if (!pool) return;
-    const a = pool.arr[pool.i];
-    pool.i = (pool.i + 1) % pool.arr.length;
+    // 空いている要素（再生終了/未再生）を優先して掴む。
+    //   ※ pause()→play() を即座に繰り返すと Chrome 等で
+    //     「play() request was interrupted by a call to pause()」が出て
+    //     その打鍵だけ無音になるため、pause() は使わない。
+    let a = null;
+    for (let n = 0; n < pool.arr.length; n++) {
+      const cand = pool.arr[(pool.i + n) % pool.arr.length];
+      if (cand.paused || cand.ended) {
+        a = cand;
+        pool.i = (pool.i + n + 1) % pool.arr.length;
+        break;
+      }
+    }
+    // 全部まだ再生中なら、いちばん古いものを頭出しして使い回す
+    if (!a) { a = pool.arr[pool.i]; pool.i = (pool.i + 1) % pool.arr.length; }
     try {
-      a.pause();
       a.currentTime = 0;
       a.playbackRate = rate;
       a.volume = vol;
-      a.play().catch(() => {});
+      const p = a.play();
+      if (p && p.catch) p.catch(() => {});
     } catch (e) { /* noop */ }
   }
 
