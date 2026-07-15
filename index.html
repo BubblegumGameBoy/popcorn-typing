@@ -54,6 +54,7 @@
       <div class="stat"><span class="stat-label">レベル</span><span id="level-count">1</span></div>
       <div class="stat"><span class="stat-label">1打鍵</span><span id="perchar-count">1</span></div>
       <div id="cheat-badge" class="hidden">😈×100</div>
+      <button id="rank-btn" class="icon-btn" title="世界ランキング">🏆</button>
       <button id="fs-btn" class="icon-btn" title="全画面">⛶</button>
       <button id="mute-btn" class="icon-btn" title="音のオン/オフ">🔊</button>
     </div>
@@ -114,6 +115,26 @@
   </div>
 </div>
 
+<!-- ====== 世界ランキング ====== -->
+<div id="rank-modal" class="hidden">
+  <div class="rank-card">
+    <div class="rank-head">
+      <h2>🏆 世界ランキング</h2>
+      <button id="rank-close" class="icon-btn" title="とじる">✕</button>
+    </div>
+    <!-- 名前入力（入力した人だけランキングに参加） -->
+    <div id="rank-join">
+      <p class="rank-join-msg">名前を入れると せかいランキングに参加できるよ！</p>
+      <div class="rank-join-row">
+        <input id="rank-name-input" type="text" maxlength="12" placeholder="なまえ（12文字まで）" autocomplete="off">
+        <button id="rank-join-btn" class="big-btn small">参加する</button>
+      </div>
+    </div>
+    <div id="rank-me" class="hidden"></div>
+    <div id="rank-list"><p class="rank-loading">よみこみ中…</p></div>
+  </div>
+</div>
+
 <!-- トースト -->
 <div id="toast-area"></div>
 
@@ -124,6 +145,9 @@
 <script src="src/data/spacing.js"></script>
 <script src="src/data/words2.js"></script>
 <script src="src/data/words.js"></script>
+<!-- 世界ランキング：Firebase Realtime DB のURLを設定すると有効化（空なら🏆ボタン非表示） -->
+<script>window.LEADERBOARD_URL = '';</script>
+<script src="src/leaderboard.js"></script>
 <script src="src/typing-engine.js"></script>
 <script src="src/effects.js"></script>
 <script src="src/game.js"></script>

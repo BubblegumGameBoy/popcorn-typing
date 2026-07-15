@@ -28,6 +28,8 @@ const UI = {
       khLevel: $('kh-level'), khEquip: $('kh-equip'), khVariety: $('kh-variety'),
       cheatModal: $('cheat-modal'),
       toastArea: $('toast-area'),
+      rankModal: $('rank-modal'), rankList: $('rank-list'), rankMe: $('rank-me'),
+      rankJoin: $('rank-join'), rankNameInput: $('rank-name-input'),
     };
   },
 
@@ -127,6 +129,40 @@ const UI = {
     else b.classList.add('hidden');
   },
   pulseCombo() { const b = this.el.comboBadge; b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); },
+
+  // ── 世界ランキング ──────────────────────────────────
+  showRankModal() { this.el.rankModal.classList.remove('hidden'); },
+  hideRankModal() { this.el.rankModal.classList.add('hidden'); },
+  get rankModalOpen() { return !this.el.rankModal.classList.contains('hidden'); },
+
+  /** 名前入力欄の表示切替（参加済みなら隠して自分の状態を出す） */
+  setRankJoined(name, myScore) {
+    const joined = !!name;
+    this.el.rankJoin.classList.toggle('hidden', joined);
+    this.el.rankMe.classList.toggle('hidden', !joined);
+    if (joined) {
+      this.el.rankMe.innerHTML =
+        `<span class="rank-me-name">🍿 ${this._esc(name)}</span>` +
+        `<span class="rank-me-score">${FORMAT.fmt(myScore)} 粒</span>`;
+    }
+  },
+
+  /** Top100リストを描画。myId が入っていたらハイライト。 */
+  renderRanking(list, myId) {
+    const box = this.el.rankList;
+    if (list === null) { box.innerHTML = '<p class="rank-loading">読み込めなかった…（時間をおいて開いてね）</p>'; return; }
+    if (!list.length)  { box.innerHTML = '<p class="rank-loading">まだ誰もいないよ。1位になるチャンス！</p>'; return; }
+    const medal = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+    box.innerHTML = list.map((e, i) =>
+      `<div class="rank-row${e.id === myId ? ' me' : ''}${i < 3 ? ' top3' : ''}">` +
+      `<span class="rank-pos">${medal(i)}</span>` +
+      `<span class="rank-name">${this._esc(e.name)}</span>` +
+      `<span class="rank-score">${FORMAT.fmt(e.score)}</span></div>`
+    ).join('');
+    const me = box.querySelector('.rank-row.me');
+    if (me) me.scrollIntoView({ block: 'center' });
+  },
+  _esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; },
 
   // ── チートモーダル ──────────────────────────────────
   showCheatModal() { this.el.cheatModal.classList.remove('hidden'); },

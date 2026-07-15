@@ -24,6 +24,7 @@
   for (const k of ['bgm1', 'bgm2', 'bgm3', 'bgm4', 'bgm5', 'bgm6']) audio.loadBGM(k, ASSETS.audioUrl(k));
 
   UI.init(cfg);
+  Leaderboard.init(cfg);
   const canvas = document.getElementById('fx-canvas');
   const particles = new FX.ParticleSystem(canvas, images, cfg.fx.maxParticles);
   const bgEl = document.getElementById('bg');
@@ -137,7 +138,10 @@
     }
   }
   function onBackspace() { if (current) { const r = current.backspace(); UI.setProgress(r.done, r.left); } }
-  function onEnter() { audio.unlock(); if (current) nextWord(); }
+  function onEnter() {
+    if (UI.rankModalOpen) { joinRanking(); return; }   // モーダル中のEnterは名前決定
+    audio.unlock(); if (current) nextWord();
+  }
   // 入力下のボタン：1=レベルアップ / 2=施設購入(高い順) / 3=品種研究（すべて手動）
   function onDigit(d) {
     audio.unlock();
@@ -205,6 +209,7 @@
     audio.play('result', 1.0, 0.7);
     UI.toast(`🎉「${lastC.name}」満タン！ +${FORMAT.fmt(reward)}粒 → 次は「${lastC.nextName}」`, { good: true, big: true });
     applyPhase(false);
+    Leaderboard.maybeSubmit(game.totalAllTime);   // 節目で世界ランキングへ（5分スロットル付き）
     // 全部クリア（最後の容器＝宇宙ぜんぶ）でチート解放
     const finalIdx = cfg.containers.length - 1;
     if (cleared.some(c => c.index === finalIdx) && !game.cheatActive) {
@@ -240,6 +245,40 @@
     requestAnimationFrame(loop);
   }
 
+  // ── 世界ランキング ────────────────────────────────
+  async function openRanking() {
+    UI.setRankJoined(Leaderboard.name, game.totalAllTime);
+    UI.showRankModal();
+    UI.renderRanking(await Leaderboard.top(), Leaderboard.playerId);
+  }
+  async function joinRanking() {
+    if (Leaderboard.joined) return;
+    const name = UI.el.rankNameInput.value.trim();
+    if (!name) { UI.el.rankNameInput.focus(); return; }
+    Leaderboard.setName(name);
+    UI.setRankJoined(Leaderboard.name, game.totalAllTime);
+    UI.toast(`🏆 ${Leaderboard.name} でランキング参加！`, { good: true, big: true });
+    await Leaderboard.submit(game.totalAllTime);          // 参加直後に初回送信
+    Leaderboard._cache = null;                            // 自分を含めて取り直す
+    UI.renderRanking(await Leaderboard.top(), Leaderboard.playerId);
+  }
+  function setupRanking() {
+    const btn = document.getElementById('rank-btn');
+    if (!Leaderboard.enabled) { btn.classList.add('hidden'); return; }
+    btn.addEventListener('click', () => { audio.unlock(); openRanking(); });
+    document.getElementById('rank-close').addEventListener('click', () => UI.hideRankModal());
+    document.getElementById('rank-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'rank-modal') UI.hideRankModal();   // 背景クリックで閉じる
+    });
+    document.getElementById('rank-join-btn').addEventListener('click', joinRanking);
+    // 定期チェック（実際に送るかは leaderboard.js のスロットルが判断）
+    setInterval(() => Leaderboard.maybeSubmit(game.totalAllTime), 60 * 1000);
+    // タブ離脱・iframeが閉じられる時に最終値を送る
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') Leaderboard.flush(game.totalAllTime);
+    });
+  }
+
   // ── 起動 ──────────────────────────────────────────
   function startGame() {
     document.getElementById('title-screen').classList.add('hidden');
@@ -259,7 +298,12 @@
       UI.toast(`🍿 留守の${mins >= 60 ? Math.round(mins / 60) + '時間' : mins + '分'}で ${FORMAT.fmt(off.gain)} 粒 焼けてたよ！`, { good: true, big: true });
     }
 
-    attachKeyInput({ onChar, onBackspace, onEnter, onDigit, isActive: () => true });
+    // ランキングモーダル中はゲーム入力を止める（名前入力欄にキーを通す）
+    attachKeyInput({
+      onChar, onBackspace, onEnter, onDigit,
+      onEscape: () => UI.hideRankModal(),
+      isActive: () => !UI.rankModalOpen,
+    });
 
     // 入力下のボタン（クリックでも数字キーと同じ）
     document.querySelectorAll('.key-hint').forEach((b) => {
@@ -297,6 +341,8 @@
       UI.toast('😈 チートモード！ ポップコーン ×100 でスタート！', { good: true, big: true });
       audio.play('result', 1.1, 0.9);
     });
+
+    setupRanking();
 
     audio.unlock();
     requestAnimationFrame(loop);

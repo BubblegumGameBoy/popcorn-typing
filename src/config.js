@@ -133,6 +133,18 @@ const CONFIG = {
     comboBurst: 24,       // コンボ更新時の破裂粒数
   },
 
+  // ── 世界ランキング（leaderboard.js が参照） ──────────
+  ranking: {
+    path: 'popcorn-typing',      // RTDB内のゲーム別パス（他ゲームと分離）
+    keep: 100,                   // 表示する順位数
+    nameMax: 12,                 // 名前の最大文字数
+    throttleMs: 5 * 60 * 1000,   // 定期送信の最短間隔（5分）
+    minGrowth: 0.01,             // 前回送信から +1% 以上伸びたときだけ送る
+    cacheMs: 60 * 1000,          // ランキング取得のキャッシュ（1分）
+    scoreCap: 9e15,              // JS安全整数の内側にクランプ
+    storageKey: 'popcorn-typing-rank',
+  },
+
   // ── セーブ ──────────────────────────────────────────
   save: {
     key: 'popcorn-typing-save-v1',
