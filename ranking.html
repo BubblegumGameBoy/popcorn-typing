@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, follow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ポップコーンタイピング 世界ランキング 🏆</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
+<style>
+/* ゲーム本体と同じ配色。ブログ埋め込み(iframe)専用の単体ページ。リンクは置かない。 */
+:root {
+  --butter: #ffd86b; --caramel: #d98326; --pop-red: #e8534e;
+  --ink: #5a3b1e; --ink-soft: #8a6a45;
+  --panel: rgba(255, 252, 244, 0.96);
+  --shadow: 0 8px 24px rgba(120, 80, 30, 0.22);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(180deg, #ffe9b8, #ffd9e8);
+  color: var(--ink); padding: 12px; display: flex; justify-content: center;
+}
+.rank-card {
+  display: flex; flex-direction: column;
+  width: min(460px, 100%); height: 100%;
+  background: var(--panel); border: 4px solid #fff; border-radius: 22px;
+  padding: 14px 16px; box-shadow: var(--shadow);
+}
+h1 { color: var(--pop-red); font-size: 19px; text-align: center; margin-bottom: 2px; }
+.sub { color: var(--ink-soft); font-size: 12px; text-align: center; margin-bottom: 10px; }
+#list {
+  flex: 1; overflow-y: auto;
+  border: 2px solid rgba(0,0,0,.08); border-radius: 14px; padding: 4px;
+  overscroll-behavior: contain;
+}
+.loading { color: var(--ink-soft); text-align: center; padding: 24px 8px; font-size: 14px; }
+.row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 10px; font-size: 14.5px; }
+.row:nth-child(even) { background: rgba(0,0,0,.04); }
+.row.top3 { font-size: 16px; font-weight: 800; }
+.pos { width: 34px; text-align: center; font-weight: 800; flex: none; }
+.name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score { font-weight: 800; color: var(--caramel); flex: none; }
+</style>
+</head>
+<body>
+<div class="rank-card">
+  <h1>🏆 ポップコーンタイピング 世界ランキング</h1>
+  <p class="sub">これまでに焼いた累計ポップコーン TOP100</p>
+  <div id="list"><p class="loading">よみこみ中…</p></div>
+</div>
+<script src="src/format.js"></script>
+<script>
+(function () {
+  const DB = 'https://popcorn-typing-default-rtdb.firebaseio.com';
+  const list = document.getElementById('list');
+  const esc = (s) => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+
+  async function load() {
+    try {
+      const res = await fetch(DB + '/popcorn-typing/players.json?orderBy="score"&limitToLast=100');
+      const data = await res.json();
+      const entries = data ? Object.values(data) : [];
+      entries.sort((a, b) => (b.score || 0) - (a.score || 0));
+      if (!entries.length) { list.innerHTML = '<p class="loading">まだ誰もいないよ。ゲームで名前を登録すると1位になれる！</p>'; return; }
+      const medal = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+      list.innerHTML = entries.map((e, i) =>
+        `<div class="row${i < 3 ? ' top3' : ''}">` +
+        `<span class="pos">${medal(i)}</span>` +
+        `<span class="name">${esc(e.name || '？？？')}</span>` +
+        `<span class="score">${FORMAT.fmt(e.score || 0)}</span></div>`
+      ).join('');
+    } catch (e) {
+      list.innerHTML = '<p class="loading">読み込めなかった…（時間をおいて再読み込みしてね）</p>';
+    }
+  }
+  load();
+  // 見えている間だけ2分ごとに更新（放置タブで叩き続けない）
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 2 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
