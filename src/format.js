@@ -22,11 +22,12 @@ function fmt(n) {
     // 1未満は小数1桁、それ以外は整数
     return n < 10 && n % 1 !== 0 ? n.toFixed(1) : Math.floor(n).toString();
   }
+  const orig = n;
   let t = 0;
   while (n >= 1000 && t < UNITS.length - 1) { n /= 1000; t++; }
   if (n >= 1000) {
-    // 単位を超えたら指数表記
-    return n.toExponential(2).replace('e+', 'e');
+    // 単位を超えたら指数表記（割った後ではなく元の値で）
+    return orig.toExponential(2).replace('e+', 'e');
   }
   // 1234.5 -> "1.23K" のように 3 桁の有効数字
   let s;

@@ -141,7 +141,9 @@ const CONFIG = {
     throttleMs: 5 * 60 * 1000,   // 定期送信の最短間隔（5分）
     minGrowth: 0.01,             // 前回送信から +1% 以上伸びたときだけ送る
     cacheMs: 60 * 1000,          // ランキング取得のキャッシュ（1分）
-    scoreCap: 9e15,              // JS安全整数の内側にクランプ
+    // 終盤は9e15(旧上限)を1日で超えるインフレ。倍精度の上限まで許容する
+    // （表示は3桁精度なので整数精度は不要。JSONはInfinity/NaNを運べないので安全）
+    scoreCap: Number.MAX_VALUE,
     storageKey: 'popcorn-typing-rank',
   },
 

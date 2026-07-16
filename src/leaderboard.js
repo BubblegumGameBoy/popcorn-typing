@@ -58,7 +58,6 @@ const Leaderboard = {
   /** スコアを送る。keepalive=true はタブ離脱時用。 */
   async submit(score, keepalive) {
     if (!this.enabled || !this.joined) return false;
-    // JSの安全整数を超えると精度が壊れるのでクランプ
     const s = Math.min(Math.floor(score), this.cfg.scoreCap);
     if (s <= this._lastSentScore && !keepalive) return false;
     try {
