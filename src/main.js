@@ -85,13 +85,16 @@
   }
 
   // ── フェーズ（背景＆BGM切替） ──────────────────────
-  let curPhaseBg = null;
+  let curPhaseBg = null, curPhaseBgm = null;
   function applyPhase(force) {
     const p = game.phase;
     if (force || p.bg !== curPhaseBg) {
       curPhaseBg = p.bg;
       bgEl.style.backgroundImage = `url("${ASSETS.imgUrl(p.bg)}")`;
       document.body.classList.toggle('space-mode', !!p.space);
+    }
+    if (force || p.bgm !== curPhaseBgm) {
+      curPhaseBgm = p.bgm;
       audio.playBGM(p.bgm);
     }
   }
