@@ -13,6 +13,7 @@ const IMG_BASE = 'assets/web/';
 const AUDIO_BASE = 'assets/';
 
 const IMAGES = {
+  butterAtlas: 'corn/generated/butter-atlas-v1.png',
   // 品種（打鍵スプライト／通貨アイコン兼用）
   normal:      'corn/普通ポップコーン 焦げ無し.png',
   normal2:     'corn/普通ポップコーン 焦げ無し ２.png',
@@ -38,6 +39,8 @@ const IMAGES = {
 
   // 背景（フェーズで切り替え：遊園地→Lv2→Lv3→タウン→宇宙）
   park:  'background/遊園地.png',
+  kitchen: 'background/generated/kitchen-v1.png',
+  stall: 'background/generated/stall-v1.png',
   park2: 'background/遊園地 レベル2.png',
   park3: 'background/遊園地レベル3.png',
   town:  'background/ポップコーンタウン.png',
@@ -45,11 +48,11 @@ const IMAGES = {
 };
 
 const AUDIO = {
-  pop1:     'audio/se/ポンッ！.mp3',
-  pop2:     'audio/se/ポンッ！_2.mp3',
+  pop1:     'audio/se/tuned/type-pop-a.wav',
+  pop2:     'audio/se/tuned/type-pop-b.wav',
   popMetal: 'audio/se/ポンッ！金属音っぽい音.mp3',
-  result:   'audio/se/ポンッ！金属音っぽい音.mp3',   // 旧「結果発表」削除のため金属音で代用
-  complete: 'audio/se/word-complete.wav',           // ワード完成（パンッ＋キラン✨）
+  result:   'audio/se/ポンッ！金属音っぽい音.mp3',
+  complete: 'audio/se/word-complete.wav',
   // BGM（フェーズで切り替え）。Poppin'_Heart はボーカル有りなので終盤に。
   bgm1: 'audio/bgm/popでかわいいダンス曲.mp3',
   bgm2: 'audio/bgm/ぴょこぴょこダンス.mp3',

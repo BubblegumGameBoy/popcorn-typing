@@ -38,23 +38,29 @@ const CONFIG = {
     costBase: 60,     // Lv2 にするコスト
     costGrowth: 1.5,  // レベルごとのコスト上昇
     particlePerLevel: 1,   // レベル1につき はじける粒 +1
-    particleCap: 18,       // 1打鍵で飛ぶ粒の上限（描画保護）
+    particleCap: 28,       // 1打鍵で飛ぶ粒の上限（描画保護）
   },
 
-  // ── 設備（自動生産・あくまで“軽い味付け”） ──────────────
-  //   ★手入力が最強★ なので cps は控えめ（数秒に数粒〜）。
-  //   見た目（画面に置かれて、ぽんぽん弾ける）で楽しませるのが主目的。
+  // ── 設備（打鍵の熱で加速する生産ライン） ──────────────
+  //   設備を育てると、単語完成ボーナス（CPSの2秒分）も成長する。
+  //   打鍵の熱で通常最大×3、ラッシュ中は×8。
   //   tier でステージ上のグループ分け（序盤/中盤/終盤）。
   equipment: [
-    { id: 'pan',        name: 'フライパン',             img: 'pan',        cost: 60,       cps: 1.5,  tier: 0, desc: '鍋ひとつ。ぽつ…ぽつ…と弾ける。' },
-    { id: 'panGrandma', name: 'フライパン＋おばあちゃん', img: 'panGrandma', cost: 400,      cps: 5,    tier: 0, desc: 'おばあちゃん参戦。手際がいい。' },
-    { id: 'microwave',  name: '電子レンジ',             img: 'microwave',  cost: 3000,     cps: 16,   tier: 1, desc: 'チンッ！で焼ける。' },
-    { id: 'cinema',     name: '映画館の業務用マシン',     img: 'cinema',     cost: 24000,    cps: 50,   tier: 1, desc: '映画のお供を生産。' },
-    { id: 'ponkashi',   name: '屋台のポン菓子機',         img: 'ponkashi',   cost: 180000,   cps: 140,  tier: 1, desc: 'ボンッ！と弾ける。' },
-    { id: 'factory',    name: '巨大ポップコーン工場',     img: 'factory',    cost: 1500000,  cps: 400,  tier: 2, desc: 'ラインで生産。放置でもガンガン。' },
-    { id: 'world',      name: 'ポップコーンワールド',     img: 'world',      cost: 12000000, cps: 1200, tier: 2, desc: '黄金の島。放置の主力。' },
+    { id: 'pan', name: 'フライパン', img: 'pan', cost: 40, cps: 4, tier: 0, desc: '最初の小さな自動化。' },
+    { id: 'panGrandma', name: 'フライパン＋おばあちゃん', img: 'panGrandma', cost: 320, cps: 28, tier: 0, desc: 'おばあちゃん参戦。手際がいい。' },
+    { id: 'microwave', name: '電子レンジ', img: 'microwave', cost: 2400, cps: 180, tier: 1, desc: 'チンッ！で大量生産。' },
+    { id: 'cinema', name: '映画館の業務用マシン', img: 'cinema', cost: 20000, cps: 1250, tier: 1, desc: '映画館まるごと満タンに。' },
+    { id: 'ponkashi', name: '屋台のポン菓子機', img: 'ponkashi', cost: 160000, cps: 8500, tier: 1, desc: 'ボンッ！と一斉に弾ける。' },
+    { id: 'factory', name: '巨大ポップコーン工場', img: 'factory', cost: 1300000, cps: 60000, tier: 2, desc: '動きつづける巨大ライン。' },
+    { id: 'world', name: 'ポップコーンワールド', img: 'world', cost: 11000000, cps: 420000, tier: 2, desc: '世界がまるごと生産装置。' },
   ],
   equipmentGrowth: 1.18,   // 1台買うごとの価格上昇率
+  equipmentMilestones: [10, 25, 50, 100], // 到達ごとにその設備の生産 ×2
+  overdrive: {
+    unlockWords: 24,
+    heatPerChar: .6, heatPerWord: 2, heatDecay: .4,
+    duration: 12, mult: 8, heatBoost: 2, wordSeconds: 2,
+  },
 
   // ── コンボ（連続ノーミス打鍵の倍率） ────────────────
   //   threshold 文字以上の連続正解で mult 倍。ミスで 0 にリセット。
@@ -69,7 +75,9 @@ const CONFIG = {
 
   // ── ワード完成ボーナス ──────────────────────────────
   //   1ワード打ち切ると、文字数 × 基礎粒 × wordBonusMult の臨時ボーナス＋大破裂。
-  wordBonusMult: 5,
+  wordBonusMult: 4,
+  autoProductionScale: .25,
+  visualGrowth: [12, 35, 80, 160],
 
   // ── 容器（目的）：満タンにしたら、もっとデカい容器へ ──────
   //   cap = この容器を満タンにするのに必要な「累計生産」の増分。
@@ -111,12 +119,14 @@ const CONFIG = {
   //   6曲ぜんぶ使う。容器の進み具合（index）で背景＆BGMを切替。
   //   背景：遊園地 → 遊園地レベル2 → 遊園地レベル3 → ポップコーンタウン → ポップコーンワールド(宇宙)
   phases: [
-    { until: 3,        bg: 'park',  bgm: 'bgm1', space: false }, // 遊園地（少し長め）
-    { until: 5,        bg: 'park2', bgm: 'bgm2', space: false }, // 遊園地レベル2
-    { until: 7,        bg: 'park3', bgm: 'bgm3', space: false }, // 遊園地レベル3
-    { until: 9,        bg: 'town',  bgm: 'bgm4', space: false }, // ポップコーンタウン
-    { until: 11,       bg: 'town',  bgm: 'bgm5', space: false }, // タウン（曲だけ変化）
-    { until: Infinity, bg: 'space', bgm: 'bgm6', space: true  }, // ポップコーンワールド（宇宙）
+    { until: 1,        minWords: 0, bg: 'kitchen', bgm: 'bgm1', space: false }, // Sカップ：小さなキッチン
+    { until: 2,        minWords: 25, bg: 'stall', bgm: 'bgm1', space: false },   // Mカップ：初めての屋台
+    { until: 3,        minWords: 75, bg: 'park',  bgm: 'bgm1', space: false }, // 遊園地（少し長め）
+    { until: 5,        minWords: 150, bg: 'park2', bgm: 'bgm2', space: false }, // 遊園地レベル2
+    { until: 7,        minWords: 250, bg: 'park3', bgm: 'bgm3', space: false }, // 遊園地レベル3
+    { until: 9,        minWords: 400, bg: 'town',  bgm: 'bgm4', space: false }, // ポップコーンタウン
+    { until: 11,       minWords: 650, bg: 'town',  bgm: 'bgm5', space: false }, // タウン（曲だけ変化）
+    { until: Infinity, minWords: 900, bg: 'space', bgm: 'bgm6', space: true  }, // ポップコーンワールド（宇宙）
   ],
 
   // ── オフライン生産 ──────────────────────────────────
@@ -127,8 +137,12 @@ const CONFIG = {
 
   // ── 演出・描画 ──────────────────────────────────────
   fx: {
-    maxParticles: 180,    // 画面に同時表示する粒の上限（オブジェクトプール）
-    typePop: 2,           // 1打鍵で飛ばす粒数
+    maxSettled: 1200,    // 床の残留粒。飛翔粒とは別枠
+    manualRetention: 45, // 手入力の粒は45〜51秒残る
+    autoRetention: 20,   // 自動生産は20〜26秒残る
+    autoAirCap: 120,     // 自動生産が打鍵粒を押し出さないための枠
+    maxParticles: 480,    // 画面に同時表示する粒の上限（オブジェクトプール）
+    typePop: 5,           // 1打鍵で飛ばす粒数
     wordBurst: 18,        // ワード完成時の破裂粒数
     comboBurst: 24,       // コンボ更新時の破裂粒数
   },

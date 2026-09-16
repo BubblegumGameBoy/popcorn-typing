@@ -303,15 +303,20 @@ class TypingWord {
 //      });
 //      // やめるとき: detach();
 // ────────────────────────────────────────────────
-function attachKeyInput({ onChar, onBackspace, onEnter, onEscape, onDigit, isActive } = {}) {
+function attachKeyInput({ onChar, onBackspace, onEnter, onEscape, onDigit, onSpace, isActive } = {}) {
   const handler = (e) => {
-    if (e.isComposing) return;                    // IME変換中は無視
+    if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
     if (isActive && !isActive()) {
       // 非アクティブ時もEnter/Escだけは通したい場合はここで分岐可
     }
     if (e.key === 'Enter')  { if (onEnter)  onEnter(e);  return; }
     if (e.key === 'Escape') { if (onEscape) onEscape(e); return; }
     if (isActive && !isActive()) return;
+    if (e.key === ' ' && onSpace) {
+      e.preventDefault();
+      if (!e.repeat) onSpace();
+      return;
+    }
     if (e.key === 'Backspace') {
       e.preventDefault();
       if (onBackspace) onBackspace();

@@ -16,6 +16,7 @@
 <title>【放置型タイピングゲーム】ポップコーンタイピング 🍿</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍿</text></svg>">
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="overdrive.css">
 <!-- 埋め込み(iframe)か単体表示かを早期判定。埋め込み時は全画面ボタンを隠す -->
 <script>if (window.self !== window.top) document.documentElement.classList.add('embedded');</script>
 <script defer src="english-controls.js"></script>
@@ -31,7 +32,7 @@
   <div class="title-card">
     <p class="game-tag">放置型タイピングゲーム</p>
     <h1 class="game-title">🍿 ポップコーン<br>タイピング</h1>
-    <p class="subtitle">打って弾けさせて、容器をいっぱいに！<br>放置している間も焼けてどんどん増えるよ🍿</p>
+    <p class="subtitle">打つたび、ぽん。打ちきると、どっかん。<br>打ちつづけると、世界がポップコーンであふれだす。</p>
     <button id="start-btn" class="big-btn">▶ はじめる</button>
     <p class="kbd-note">※ キーボードでローマ字入力するゲームです（PC推奨）</p>
   </div>
@@ -147,9 +148,10 @@
 <script src="src/data/words2.js"></script>
 <script src="src/data/words.js"></script>
 <!-- 世界ランキング：Firebase Realtime DB のURLを設定すると有効化（空なら🏆ボタン非表示） -->
-<script>window.LEADERBOARD_URL = 'https://popcorn-typing-default-rtdb.firebaseio.com';</script>
+<script>window.LEADERBOARD_URL = new URLSearchParams(location.search).get('preview') === 'early' ? '' : 'https://popcorn-typing-default-rtdb.firebaseio.com';</script>
 <script src="src/leaderboard.js"></script>
 <script src="src/typing-engine.js"></script>
+<script src="src/particles.js"></script>
 <script src="src/effects.js"></script>
 <script src="src/game.js"></script>
 <script src="src/ui.js"></script>

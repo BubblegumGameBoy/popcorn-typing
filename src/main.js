@@ -12,7 +12,9 @@
   const cfg = CONFIG;
 
   const images = ASSETS.preloadImages();
-  const game = GAME.Game.loadFrom(cfg);
+  // A non-persistent early-game preview lets existing players see the new scenes.
+  const earlyPreview = new URLSearchParams(location.search).get('preview') === 'early';
+  const game = earlyPreview ? new GAME.Game(cfg) : GAME.Game.loadFrom(cfg);
   window.__game = game;
 
   const audio = new FX.AudioKit();
@@ -26,8 +28,18 @@
   UI.init(cfg);
   Leaderboard.init(cfg);
   const canvas = document.getElementById('fx-canvas');
-  const particles = new FX.ParticleSystem(canvas, images, cfg.fx.maxParticles);
+  const particles = new FX.ParticleSystem(canvas, images, cfg.fx.maxParticles, cfg.fx);
   const bgEl = document.getElementById('bg');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const echoes = [];
+  const machineClocks = cfg.equipment.map(() => 0);
+  function popOrigin() {
+    const c = canvas.getBoundingClientRect(), r = UI.el.typingPanel.getBoundingClientRect();
+    return { x: r.left - c.left + r.width * (.25 + Math.random() * .5), y: r.top - c.top + 8 };
+  }
+  function echoBurst(x, y, n, delay, power) {
+    if (echoes.length < 30) echoes.push({ x, y, n, delay, power, key: cornKey() });
+  }
 
   // ── お題 ──────────────────────────────────────────
   let current = null, currentWord = null;
@@ -49,7 +61,8 @@
     return { x: cr.width * (0.1 + Math.random() * 0.8), y: cr.height * (0.12 + Math.random() * 0.72) };
   }
   function fireworksAcross(bursts, perBurst, key, power) {
-    for (let i = 0; i < bursts; i++) { const p = randomPos(); particles.burst(p.x, p.y, perBurst, key, power); }
+    const scale = reducedMotion ? .1 : game.rushLeft > 0 ? 1 : .12 + game.visualTier * .16;
+    for (let i = 0; i < Math.max(1, Math.ceil(bursts * scale)); i++) { const p = randomPos(); particles.burst(p.x, p.y, Math.max(1, Math.ceil(perBurst * scale)), key, power * (.65 + scale * .35)); }
   }
   function gainStyle(cm) {
     if (cm >= 10) return { color: '#ff4f86', size: 42 };
@@ -75,13 +88,14 @@
     const ps = facilityPositions();
     if (!ps.length) return;
     const p = ps[Math.floor(Math.random() * ps.length)];
-    particles.drop(p.x, p.y, 1, cornKey());   // 施設から落下
+    particles.drop(p.x, p.y, Math.min(12, 2 + Math.floor(Math.log10(game.cps + 1)) + (game.rushLeft > 0 ? 4 : 0)), cornKey());
   }
   function dropFromFacility(i, n) {
     const f = UI.facElems[i]; if (!f) return;
     const cr = canvas.getBoundingClientRect();
     const r = f.el.getBoundingClientRect();
     particles.drop(r.left + r.width / 2 - cr.left, Math.max(4, r.bottom - cr.top), n, cornKey());
+    f.el.classList.remove('puff'); void f.el.offsetWidth; f.el.classList.add('puff');
   }
 
   // ── フェーズ（背景＆BGM切替） ──────────────────────
@@ -119,12 +133,14 @@
     UI.setProgress(r.done, r.left);
     UI.bumpCorn();
     const cm = game.comboMult;
-    const pos = randomPos();
-    particles.burst(pos.x, pos.y, game.particlesPerKey, cornKey(), 1.0 + Math.min(0.8, cm * 0.06));
+    const pos = popOrigin();
+    particles.fountain(pos.x, pos.y, reducedMotion ? 1 : game.particlesPerKey, cornKey(), 1 + Math.min(.8, cm * .06));
     const gs = gainStyle(cm);
     particles.addText(pos.x, pos.y - 6, '+' + FORMAT.fmt(gain), gs.color, gs.size);
     keyPop ^= 1;
     audio.play('metal', keyPop ? 1.06 : 0.92, 0.6);
+    const counter = UI.el.popcorn;
+    counter.classList.remove('pop-hit'); void counter.offsetWidth; counter.classList.add('pop-hit');
 
     UI.showCombo(game.combo, cm);
     if (cm > lastComboMult) {
@@ -134,11 +150,18 @@
       audio.play('result', 1.1, 0.5);
     }
     if (r.status === 'complete') {
-      game.completeWord(currentWord.kana.length);
-      audio.play('complete', 1.0, 0.7);   // パンッ＋キラン✨（ワード完成の特別音）
-      fireworksAcross(1, 4, cornKey(), 1.4);
+      const bonus = game.completeWord(currentWord.kana.length);
+      particles.addText(canvas.clientWidth / 2, canvas.clientHeight * .32, 'WORD! +' + FORMAT.fmt(bonus), '#df4774', 22 + game.visualTier * 3);
+      audio.play('complete', 1.0, 0.7);
+      particles.fountain(pos.x, pos.y, reducedMotion ? 2 : game.wordParticles, cornKey(), 1 + game.visualTier * .2);
+      if (!reducedMotion && game.rushLeft > 0) {
+        echoBurst(pos.x - 95, pos.y + 25, 12, .09, 1.7);
+        echoBurst(pos.x + 95, pos.y + 25, 16, .19, 1.9);
+      }
       nextWord();
+      applyPhase(false);
     }
+    if (game.heat >= 100 && !game.rushLeft) doRush();
   }
   function onBackspace() { if (current) { const r = current.backspace(); UI.setProgress(r.done, r.left); } }
   function onEnter() {
@@ -174,7 +197,8 @@
       UI.flashKeyHint('2', true);
       UI.updateFacilities(game);
       fireworksAcross(8, 9, cornKey(), 2.2);   // ど派手に破裂
-      dropFromFacility(r.index, 16);           // その施設からどっさり落ちる
+      dropFromFacility(r.index, 2 + game.visualTier * 2);           // その施設からどっさり落ちる
+      if (cfg.equipmentMilestones.includes(game.equip[r.index])) celebrateMilestone(r.index);
       if (r.first) UI.toast(`⚙️ ${cfg.equipment[r.index].name} 設置！`, { good: true, big: true });
     } else {
       audio.play('pop1', 0.5, 0.25);
@@ -203,6 +227,21 @@
     }
   }
 
+  function doRush() {
+    audio.unlock();
+    if (!game.activateRush()) return;
+    if (!reducedMotion) for (let i = 0; i < 7; i++) echoBurst(canvas.clientWidth * (i + 1) / 8, canvas.clientHeight * .8, 22, i * .07, 2.6);
+    audio.play('result', .85, .8);
+    particles.addText(canvas.clientWidth / 2, canvas.clientHeight * .22, 'POPCORN RUSH! ×8', '#e64b69', 44);
+    UI.refresh(game);
+  }
+
+  function celebrateMilestone(i) {
+    fireworksAcross(4, 14, cornKey(), 2);
+    UI.toast(`⚡ ${cfg.equipment[i].name} ${game.equip[i]}台！ この設備の生産 ×2`, { good: true, big: true });
+    audio.play('result', 1.25, .6);
+  }
+
   // ── クリア＆チート ────────────────────────────────
   function onContainerCleared(cleared) {
     const lastC = cleared[cleared.length - 1];
@@ -224,11 +263,24 @@
 
   // ── ループ ────────────────────────────────────────
   let last = performance.now();
-  let acc = 0, puffTimer = 0, lastTotal = 0, genRate = 0;
+  let acc = 0, puffTimer = 0, lastTotal = 0, genRate = 0, autoTimer = 0;
   function loop(now) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     game.tick(dt);
+    autoTimer += dt;
+    if (autoTimer >= cfg.autoBuy.intervalMs / 1000) {
+      autoTimer = 0;
+      const before = game.equip.slice();
+      game.autoBuy();
+      game.equip.forEach((n, i) => {
+        if (n === before[i]) return;
+        UI.updateFacilities(game);
+        dropFromFacility(i, 1 + game.visualTier);
+        if (cfg.equipmentMilestones.includes(n)) celebrateMilestone(i);
+        else if (before[i] === 0) { dropFromFacility(i, 2 + game.visualTier * 2); audio.play('metal', .8, .35); }
+      });
+    }
     const inst = dt > 0 ? (game.totalRun - lastTotal) / dt : 0;
     lastTotal = game.totalRun;
     genRate += (inst - genRate) * Math.min(1, dt * 5);
@@ -236,10 +288,24 @@
     const cleared = game.collectContainerRewards();
     if (cleared.length) onContainerCleared(cleared);
 
-    if (game.cps > 0) {
-      const rate = Math.min(7, 1 + Math.log10(game.cps + 1) * 2.2);
-      puffTimer -= dt;
-      if (puffTimer <= 0) { puffTimer = 1 / rate; emitAutoPuff(); }
+    const rushActive = game.rushLeft > 0;
+    document.body.classList.toggle('rush-active', rushActive);
+    for (let i = 0; i < machineClocks.length; i++) {
+      if (!game.equip[i]) continue;
+      machineClocks[i] -= dt;
+      if (machineClocks[i] <= 0) {
+        machineClocks[i] = Math.max(.3, (3.2 + i * .2) / (1 + game.visualTier * .35) / (rushActive ? 2 : 1));
+        const count = Math.min(14, 1 + game.visualTier + (rushActive ? 5 : 0));
+        dropFromFacility(i, reducedMotion ? 1 : count);
+      }
+    }
+    for (let i = echoes.length - 1; i >= 0; i--) {
+      const e = echoes[i]; e.delay -= dt;
+      if (e.delay <= 0) {
+        particles.fountain(e.x, e.y, e.n, e.key, e.power);
+        audio.play('pop2', 1 + e.power * .1, .22);
+        echoes.splice(i, 1);
+      }
     }
     particles.update(dt);
     particles.draw();
@@ -305,7 +371,7 @@
     attachKeyInput({
       onChar, onBackspace, onEnter, onDigit,
       onEscape: () => UI.hideRankModal(),
-      isActive: () => !UI.rankModalOpen,
+      isActive: () => !UI.rankModalOpen && UI.el.cheatModal.classList.contains('hidden'),
     });
 
     // 入力下のボタン（クリックでも数字キーと同じ）
@@ -350,8 +416,10 @@
     audio.unlock();
     requestAnimationFrame(loop);
 
-    setInterval(() => game.save(), cfg.save.intervalMs);
-    window.addEventListener('beforeunload', () => game.save());
+    if (!earlyPreview) {
+      setInterval(() => game.save(), cfg.save.intervalMs);
+      window.addEventListener('beforeunload', () => game.save());
+    }
   }
 
   document.getElementById('start-btn').addEventListener('click', startGame);

@@ -1,0 +1,18 @@
+[
+  {
+    "input": "ポンッ！.mp3",
+    "output": "type-pop-a.wav",
+    "originalSeconds": 2.3249166666666667,
+    "removedLeadMs": 270.5208333333333,
+    "outputSeconds": 2.0543958333333334,
+    "peakLimit": null
+  },
+  {
+    "input": "ポンッ！_2.mp3",
+    "output": "type-pop-b.wav",
+    "originalSeconds": 2.3249166666666667,
+    "removedLeadMs": 269.79166666666663,
+    "outputSeconds": 2.055125,
+    "peakLimit": null
+  }
+]

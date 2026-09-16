@@ -1,0 +1,32 @@
+/* The original layout. Feedback belongs to the popcorn, not another panel. */
+#typing-panel { z-index: 3; background: #fffcf4; }
+#key-hints .key-hint { background: #fffcf4; }
+#key-hints .key-hint.locked { opacity: 1; color: #a69987; border-color: #e8decb; box-shadow: none; }
+#romaji-left { color: #907954; }
+#popcorn-count { transform-origin: left center; transition: color .18s; }
+#popcorn-count.pop-hit { animation: score-pop .18s ease-out; }
+.fac img { transform-origin: center bottom; }
+.fac.puff img { animation: machine-pop .24s ease-out; }
+.rush-active #bg-overlay { background: radial-gradient(ellipse at center, #ffd7740a 35%, #e9536b66); }
+.rush-active #typing-panel { border-color: #ffce5a; box-shadow: 0 0 35px #ffb33a77, var(--shadow); }
+.rush-active #popcorn-count { color: #ec4168; }
+.rush-active #container-box { box-shadow: 0 0 26px #ffc02c, var(--shadow); }
+.game-tag { letter-spacing: 2px; margin-bottom: 12px; font-size: 11px; }
+@keyframes score-pop { 40% { transform: scale(1.12); color: #e84c61; } }
+@keyframes machine-pop { 35% { transform: scale(1.13,.85) rotate(-4deg); } 65% { transform: scale(.95,1.12) rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+@media (max-width: 560px) {
+  #key-hints { width: 100%; gap: 4px; }
+  #key-hints .key-hint { flex: 1; min-width: 0; padding: 5px 3px; gap: 3px; flex-wrap: wrap; justify-content: center; }
+  #key-hints .kh-name, #key-hints .kh-cost { font-size: 10px; }
+  #key-hints .kh-cost { flex-basis: 100%; }
+  #key-hints kbd { padding: 1px 4px; font-size: 11px; }
+}
+
+/* Keep the camera, words and counters still while kernels move. */
+#typing-panel.bump { animation: none; transform: none; }
+#typing-panel.miss { animation: miss-tint .2s ease-out; }
+#popcorn-count.pop-hit { animation: none; }
+.fac.bump { animation: facility-arrival .25s ease-out; }
+@keyframes miss-tint { 50% { border-color: #ed9a90; } }
+@keyframes facility-arrival { 50% { filter: brightness(1.15); } }

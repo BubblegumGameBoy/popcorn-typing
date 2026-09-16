@@ -26,6 +26,10 @@ class Game {
     this.combo = 0;               // 連続ノーミス
     this.maxCombo = 0;
     this.wordsCleared = 0;
+    this.heat = 0;
+    this.rushLeft = 0;
+    this.autoEnabled = true;
+    this.lastAutoPurchase = null;
     if (newGame) {
       this.totalAllTime = 0;      // 全生産（＝容器の進捗。リセットされない）
       this.containersCleared = 0; // 満タンにした容器の数
@@ -75,14 +79,30 @@ class Game {
 
   /** 1打鍵の獲得粒（コンボこみ） */
   get perChar() {
-    return this.baseOutput * this.comboMult;
+    return this.baseOutput * this.comboMult * this.rushMult;
+  }
+  get rushMult() { return this.rushLeft > 0 ? this.cfg.overdrive.mult : 1; }
+  get heatMult() { return 1 + this.heat / 100 * this.cfg.overdrive.heatBoost; }
+  get productionMult() { return this.globalMult * this.heatMult * this.rushMult; }
+  equipmentMult(i) {
+    return 2 ** this.cfg.equipmentMilestones.filter(n => this.equip[i] >= n).length;
+  }
+  equipmentCps(i) { return this.equip[i] * this.cfg.equipment[i].cps * this.equipmentMult(i); }
+  get idleCps() { return this.equip.reduce((s, _, i) => s + this.equipmentCps(i), 0) * this.globalMult * this.cfg.autoProductionScale; }
+  get canChargeRush() { return this.wordsCleared >= this.cfg.overdrive.unlockWords; }
+  activateRush() {
+    if (!this.canChargeRush || this.heat < 100 || this.rushLeft > 0) return false;
+    this.heat = 0;
+    this.rushLeft = this.cfg.overdrive.duration;
+    return true;
   }
 
   /** 1打鍵で飛ばす粒の数（レベルに比例、上限あり） */
   get particlesPerKey() {
-    const L = this.cfg.level;
-    return Math.max(1, Math.min(L.particleCap, this.level * L.particlePerLevel));
+    return Math.min(this.cfg.level.particleCap, (1 + this.visualTier) * (this.rushLeft > 0 ? 4 : 1));
   }
+  get visualTier() { return this.cfg.visualGrowth.filter(n => this.wordsCleared >= n).length; }
+  get wordParticles() { return (2 + this.visualTier * 3) * (this.rushLeft > 0 ? 3 : 1); }
 
   /** 次のレベルアップ費用 */
   get levelCost() {
@@ -99,9 +119,7 @@ class Game {
 
   /** 毎秒の自動生産（CPS、塩こみ） */
   get cps() {
-    let c = 0;
-    for (let i = 0; i < this.equip.length; i++) c += this.equip[i] * this.cfg.equipment[i].cps;
-    return c * this.globalMult;
+    return this.idleCps * this.heatMult * this.rushMult;
   }
 
   /** 設備 i の現在価格（所有数で上昇） */
@@ -125,6 +143,7 @@ class Game {
   /** 1文字正解。獲得粒を返す。 */
   typeChar() {
     this.combo++;
+    if (this.canChargeRush && !this.rushLeft) this.heat = Math.min(100, this.heat + this.cfg.overdrive.heatPerChar);
     if (this.combo > this.maxCombo) this.maxCombo = this.combo;
     const gain = this.perChar;
     this._earn(gain);
@@ -137,14 +156,25 @@ class Game {
   /** 1ワード完成ボーナス。獲得粒を返す。 */
   completeWord(charCount) {
     this.wordsCleared++;
-    const bonus = charCount * this.baseOutput * this.cfg.wordBonusMult * this.comboMult;
+    if (this.canChargeRush && !this.rushLeft) this.heat = Math.min(100, this.heat + this.cfg.overdrive.heatPerWord);
+    const bonus = charCount * this.perChar * this.cfg.wordBonusMult + this.cps * this.cfg.overdrive.wordSeconds;
     this._earn(bonus);
     return bonus;
   }
 
   /** 自動生産を dt 秒ぶん加算 */
   tick(dt) {
-    const g = this.cps * dt;
+    if (!Number.isFinite(dt) || dt <= 0) return 0;
+    // 区間積分でフレームレートやラッシュ終了境界による生産差を防ぐ。
+    const rushing = Math.min(dt, this.rushLeft);
+    const rest = dt - rushing;
+    let g = this.idleCps * this.cfg.overdrive.mult * rushing;
+    this.rushLeft = Math.max(0, this.rushLeft - dt);
+    const before = this.heat;
+    const decayTime = before < 100 ? Math.min(rest, before / this.cfg.overdrive.heatDecay) : 0;
+    if (before < 100) this.heat = Math.max(0, before - this.cfg.overdrive.heatDecay * rest);
+    const heatArea = before === 100 ? rest * 100 : (before + this.heat) / 2 * decayTime;
+    g += this.idleCps * (rest + heatArea / 100 * this.cfg.overdrive.heatBoost);
     if (g > 0) this._earn(g);
     return g;
   }
@@ -176,19 +206,8 @@ class Game {
 
   /** 施設購入ボタン用：まだ持っていない設備を「安い順」に優先。全種そろったら高い順。 */
   buyNextEquip() {
-    let target = -1, cheapest = Infinity;
-    for (let i = 0; i < this.cfg.equipment.length; i++) {
-      if (this.equip[i] === 0) {
-        const c = this.equipCost(i);
-        if (this.popcorn >= c && c < cheapest) { cheapest = c; target = i; }
-      }
-    }
-    if (target < 0) {                       // 全種所持 → 高い順に増強
-      for (let i = this.cfg.equipment.length - 1; i >= 0; i--) {
-        if (this.popcorn >= this.equipCost(i)) { target = i; break; }
-      }
-    }
-    if (target < 0) return null;
+    const target = this.nextEquipIndex();
+    if (target < 0 || this.popcorn < this.equipCost(target)) return null;
     const first = this.equip[target] === 0;
     this.buyEquip(target);
     return { index: target, first };
@@ -207,34 +226,37 @@ class Game {
     return this.cfg.equipment.length - 1;
   }
 
-  /** 自動購入：レベルアップ用に levelCost を残し、余りで品種→高い設備の順に強化。
+  /** 自動購入：レベルアップ用に levelCost を残し、生産効率で選んだ設備を一台増設。
       新規に設置した設備の index 配列を返す（演出用）。 */
   autoBuy() {
-    const reserve = this.levelCost;
-    const newlyPlaced = [];
-    let guard = 0;
-    // 品種（解放できるなら、予約を残して）
-    while (this.nextVariety && (this.popcorn - this.nextVariety.cost) >= reserve && guard++ < 50) {
-      this.buyVariety();
+    if (!this.autoEnabled) return [];
+    const target = this.autoTarget();
+    if (!target || this.popcorn < target.cost + this.levelCost) return [];
+    const first = this.equip[target.index] === 0;
+    this.buyEquip(target.index);
+    this.lastAutoPurchase = target.index;
+    return first ? [target.index] : [];
+  }
+  // 生産増分/価格で次の一台を選び、買えるまで貯める。節目の倍増も評価する。
+  autoTarget() {
+    let best = null;
+    for (let i = 0; i < this.equip.length; i++) {
+      const n = this.equip[i], cost = this.equipCost(i);
+      const nextMult = 2 ** this.cfg.equipmentMilestones.filter(m => n + 1 >= m).length;
+      const gain = (n + 1) * this.cfg.equipment[i].cps * nextMult - this.equipmentCps(i);
+      const value = gain / cost;
+      if (!best || value > best.value) best = { index: i, cost, gain, value };
     }
-    // 設備：高い順に、予約を残して買えるだけ
-    while (guard++ < 500) {
-      let best = -1;
-      for (let i = this.cfg.equipment.length - 1; i >= 0; i--) {
-        if ((this.popcorn - this.equipCost(i)) >= reserve) { best = i; break; }
-      }
-      if (best < 0) break;
-      const first = this.equip[best] === 0;
-      this.buyEquip(best);
-      if (first) newlyPlaced.push(best);
-    }
-    return newlyPlaced;
+    return best;
   }
 
   // ── フェーズ＆クリア ────────────────────────────────
   get phase() {
     const idx = this.containerState().index;
-    for (const p of this.cfg.phases) if (idx < p.until) return p;
+    for (let i = 0; i < this.cfg.phases.length; i++) {
+      const p = this.cfg.phases[i], next = this.cfg.phases[i + 1];
+      if (idx < p.until || !next || this.wordsCleared < next.minWords) return p;
+    }
     return this.cfg.phases[this.cfg.phases.length - 1];
   }
   get isGameCleared() { return this.containersCleared >= this.cfg.containers.length; }
@@ -295,7 +317,7 @@ class Game {
     this.lastSeen = now;
     const cap = this.cfg.offline.capHours * 3600;
     const sec = Math.min(elapsed, cap);
-    const gain = this.cps * this.cfg.offline.rate * sec;
+    const gain = this.idleCps * this.cfg.offline.rate * sec;
     if (gain > 0) this._earn(gain);
     return { gain, seconds: sec, capped: elapsed > cap };
   }
@@ -309,6 +331,7 @@ class Game {
       containersCleared: this.containersCleared,
       cheatUnlocked: this.cheatUnlocked, cheatActive: this.cheatActive,
       maxCombo: this.maxCombo, wordsCleared: this.wordsCleared,
+      autoEnabled: this.autoEnabled,
       lastSeen: Date.now(),
     });
   }
@@ -331,6 +354,9 @@ class Game {
       this.wordsCleared = d.wordsCleared || 0;
       this.lastSeen = d.lastSeen || Date.now();
       this.combo = 0;
+      this.heat = 0;
+      this.rushLeft = 0;
+      this.autoEnabled = true;
       return true;
     } catch (e) { return false; }
   }
