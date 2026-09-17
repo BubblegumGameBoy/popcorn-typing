@@ -263,24 +263,11 @@
 
   // ── ループ ────────────────────────────────────────
   let last = performance.now();
-  let acc = 0, puffTimer = 0, lastTotal = 0, genRate = 0, autoTimer = 0;
+  let acc = 0, puffTimer = 0, lastTotal = 0, genRate = 0;
   function loop(now) {
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     game.tick(dt);
-    autoTimer += dt;
-    if (autoTimer >= cfg.autoBuy.intervalMs / 1000) {
-      autoTimer = 0;
-      const before = game.equip.slice();
-      game.autoBuy();
-      game.equip.forEach((n, i) => {
-        if (n === before[i]) return;
-        UI.updateFacilities(game);
-        dropFromFacility(i, 1 + game.visualTier);
-        if (cfg.equipmentMilestones.includes(n)) celebrateMilestone(i);
-        else if (before[i] === 0) { dropFromFacility(i, 2 + game.visualTier * 2); audio.play('metal', .8, .35); }
-      });
-    }
     const inst = dt > 0 ? (game.totalRun - lastTotal) / dt : 0;
     lastTotal = game.totalRun;
     genRate += (inst - genRate) * Math.min(1, dt * 5);

@@ -72,10 +72,10 @@ test('word completion scales with factory output', () => {
   const a = new Game(cfg), b = new Game(cfg); b.equip[0] = 10;
   assert.ok(b.completeWord(5) > a.completeWord(5));
 });
-test('save preserves automation, offline gains exclude temporary boosts', () => {
+test('old saves disable auto-purchase while offline production remains', () => {
   const g = new Game(cfg); g.equip[0] = 10; g.autoEnabled = true; g.heat = 100; g.activateRush();
   const copy = new Game(cfg); assert.equal(copy.load(g.serialize()), true);
-  assert.equal(copy.autoEnabled, true); assert.equal(copy.rushLeft, 0); assert.equal(copy.heat, 0);
+  assert.equal(copy.autoEnabled, false); assert.equal(copy.rushLeft, 0); assert.equal(copy.heat, 0);
   copy.lastSeen = Date.now() - 24 * 3600e3;
   const off = copy.applyOffline();
   assert.equal(off.gain, 20 * .5 * 8 * 3600); assert.equal(off.capped, true);
@@ -101,4 +101,16 @@ test('early scenes progress kitchen to stall to park at container boundaries', (
   g.totalAllTime = 3500; assert.equal(g.phase.bg, 'park');
   g.wordsCleared = 75; assert.equal(g.phase.bg, 'park');
   assert.equal(g.phase.bgm, 'bgm1');
+});
+
+test('facilities require manual purchase even when affordable', () => {
+  const g = new Game(cfg); g.popcorn = 100000;
+  g.tick(60); g.autoBuy();
+  assert.ok(g.equip.every(n => n === 0));
+  assert.equal(g.popcorn, 100000);
+  assert.equal(g.buyNextEquip().index, 0);
+  const balance = g.popcorn;
+  g.tick(10);
+  assert.equal(g.equip[0], 1);
+  assert.ok(g.popcorn > balance);
 });

@@ -28,7 +28,7 @@ class Game {
     this.wordsCleared = 0;
     this.heat = 0;
     this.rushLeft = 0;
-    this.autoEnabled = true;
+    this.autoEnabled = false;
     this.lastAutoPurchase = null;
     if (newGame) {
       this.totalAllTime = 0;      // 全生産（＝容器の進捗。リセットされない）
@@ -356,7 +356,7 @@ class Game {
       this.combo = 0;
       this.heat = 0;
       this.rushLeft = 0;
-      this.autoEnabled = true;
+      this.autoEnabled = false;
       return true;
     } catch (e) { return false; }
   }
