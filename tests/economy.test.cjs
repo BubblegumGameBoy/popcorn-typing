@@ -20,11 +20,25 @@ test('opening is sparse even with a high combo; rush needs sustained progress', 
   assert.equal(g.particlesPerKey, 12);
   assert.equal(g.wordParticles, 24);
 });
-test('automation cannot rush the player through backgrounds', () => {
-  const g = new Game(cfg); g.totalAllTime = 1e12;
-  assert.equal(g.phase.bg, 'kitchen');
-  g.wordsCleared = 25; assert.equal(g.phase.bg, 'stall');
-  g.wordsCleared = 75; assert.equal(g.phase.bg, 'park');
+test('background and music follow every container boundary regardless of word count', () => {
+  for (const words of [0, 25, 900]) {
+    const g = new Game(cfg); g.wordsCleared = words;
+    let total = 0;
+    for (let idx = 0; idx < cfg.containers.length; idx++) {
+      g.totalAllTime = total;
+      const expected = cfg.phases.find(p => idx < p.until);
+      assert.equal(g.phase.bg, expected.bg);
+      assert.equal(g.phase.bgm, expected.bgm);
+      if (idx > 0) {
+        g.totalAllTime = total - 1;
+        assert.equal(g.phase.bgm, cfg.phases.find(p => idx - 1 < p.until).bgm);
+      }
+      total += cfg.containers[idx].cap;
+    }
+    g.totalAllTime = 1e12;
+    assert.equal(g.phase.bg, 'space');
+    assert.equal(g.phase.bgm, 'bgm6');
+  }
 });
 test('typing heats production, a full charge waits, rush cannot stack', () => {
   const g = new Game(cfg); g.equip[0] = 1; g.wordsCleared = cfg.overdrive.unlockWords;
@@ -82,9 +96,9 @@ test('early scenes progress kitchen to stall to park at container boundaries', (
   const g = new Game(cfg);
   assert.equal(g.phase.bg, 'kitchen');
   g.totalAllTime = 499; assert.equal(g.phase.bg, 'kitchen');
-  g.totalAllTime = 500; assert.equal(g.phase.bg, 'kitchen');
+  g.totalAllTime = 500; assert.equal(g.phase.bg, 'stall');
   g.wordsCleared = 25; assert.equal(g.phase.bg, 'stall');
-  g.totalAllTime = 3500; assert.equal(g.phase.bg, 'stall');
+  g.totalAllTime = 3500; assert.equal(g.phase.bg, 'park');
   g.wordsCleared = 75; assert.equal(g.phase.bg, 'park');
   assert.equal(g.phase.bgm, 'bgm1');
 });

@@ -254,8 +254,8 @@ class Game {
   get phase() {
     const idx = this.containerState().index;
     for (let i = 0; i < this.cfg.phases.length; i++) {
-      const p = this.cfg.phases[i], next = this.cfg.phases[i + 1];
-      if (idx < p.until || !next || this.wordsCleared < next.minWords) return p;
+      const p = this.cfg.phases[i];
+      if (idx < p.until) return p;
     }
     return this.cfg.phases[this.cfg.phases.length - 1];
   }

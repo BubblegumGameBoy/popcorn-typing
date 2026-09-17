@@ -119,14 +119,14 @@ const CONFIG = {
   //   6曲ぜんぶ使う。容器の進み具合（index）で背景＆BGMを切替。
   //   背景：遊園地 → 遊園地レベル2 → 遊園地レベル3 → ポップコーンタウン → ポップコーンワールド(宇宙)
   phases: [
-    { until: 1,        minWords: 0, bg: 'kitchen', bgm: 'bgm1', space: false }, // Sカップ：小さなキッチン
-    { until: 2,        minWords: 25, bg: 'stall', bgm: 'bgm1', space: false },   // Mカップ：初めての屋台
-    { until: 3,        minWords: 75, bg: 'park',  bgm: 'bgm1', space: false }, // 遊園地（少し長め）
-    { until: 5,        minWords: 150, bg: 'park2', bgm: 'bgm2', space: false }, // 遊園地レベル2
-    { until: 7,        minWords: 250, bg: 'park3', bgm: 'bgm3', space: false }, // 遊園地レベル3
-    { until: 9,        minWords: 400, bg: 'town',  bgm: 'bgm4', space: false }, // ポップコーンタウン
-    { until: 11,       minWords: 650, bg: 'town',  bgm: 'bgm5', space: false }, // タウン（曲だけ変化）
-    { until: Infinity, minWords: 900, bg: 'space', bgm: 'bgm6', space: true  }, // ポップコーンワールド（宇宙）
+    { until: 1,        bg: 'kitchen', bgm: 'bgm1', space: false }, // Sカップ：小さなキッチン
+    { until: 2,        bg: 'stall', bgm: 'bgm1', space: false },   // Mカップ：初めての屋台
+    { until: 3,        bg: 'park',  bgm: 'bgm1', space: false }, // 遊園地（少し長め）
+    { until: 5,        bg: 'park2', bgm: 'bgm2', space: false }, // 遊園地レベル2
+    { until: 7,        bg: 'park3', bgm: 'bgm3', space: false }, // 遊園地レベル3
+    { until: 9,        bg: 'town',  bgm: 'bgm4', space: false }, // ポップコーンタウン
+    { until: 11,       bg: 'town',  bgm: 'bgm5', space: false }, // タウン（曲だけ変化）
+    { until: Infinity, bg: 'space', bgm: 'bgm6', space: true  }, // ポップコーンワールド（宇宙）
   ],
 
   // ── オフライン生産 ──────────────────────────────────
